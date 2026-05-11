@@ -101,7 +101,7 @@ def main():
         print("  DRY RUN — no changes made.")
         return
 
-    client = AIProjectClient(endpoint=endpoint, credential=DefaultAzureCredential())
+    client = AIProjectClient(endpoint=endpoint, credential=DefaultAzureCredential(), allow_preview=True)
     agent  = client.agents.create_version(
         agent_name=name,
         definition=PromptAgentDefinition(model=model, instructions=instructions),
