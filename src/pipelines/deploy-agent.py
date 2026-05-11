@@ -89,13 +89,14 @@ def main():
     agent_dir = Path(args.agent) if Path(args.agent).is_absolute() else _AGENTS_ROOT / args.agent
 
     config       = load_config(agent_dir, args.env)
-    name         = config["name"]
-    description  = config.get("description", "")
+    name         = config["name"]          # slug: alphanumeric + hyphens, ≤63 chars
+    display_name = config.get("display_name", name)
+    description  = config.get("description", display_name)
     instructions = load_instructions(agent_dir, config)
     model        = config.get("model") or require_env("OPENAI_DEPLOYMENT_NAME")
     endpoint     = require_env("FOUNDRY_PROJECT_ENDPOINT")
 
-    print(f"\n  Deploying '{name}' → {args.env.upper()}  |  model: {model}\n")
+    print(f"\n  Deploying '{name}' ({display_name}) → {args.env.upper()}  |  model: {model}\n")
 
     if args.dry_run:
         print("  DRY RUN — no changes made.")
