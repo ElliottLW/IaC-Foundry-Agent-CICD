@@ -1,0 +1,4 @@
+name: "Azure & AI Portugal Agent [TEST]"
+description: "AI assistant for Portuguese-speaking teams navigating Microsoft Azure and AI services, built by L-W Tech."
+instructions_file: "instructions.test.md"
+guardrails_file: "guardrails.md"

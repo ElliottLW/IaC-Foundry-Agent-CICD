@@ -1,0 +1,110 @@
+name: Deploy Agent
+
+on:
+  push:
+    branches: [main, test, dev]
+    paths:
+      - "src/agents/**"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, test, prod]
+      agent:
+        description: "Agent to deploy (leave blank to deploy all)"
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ── Resolve environment from branch or manual input ───────────────────────
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.resolve.outputs.environment }}
+    steps:
+      - name: Resolve target environment
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          else
+            case "${{ github.ref_name }}" in
+              main) ENV="prod" ;;
+              test) ENV="test" ;;
+              dev)  ENV="dev"  ;;
+              *)    echo "Unknown branch — cannot resolve environment"; exit 1 ;;
+            esac
+          fi
+          echo "environment=$ENV" >> "$GITHUB_OUTPUT"
+          echo "Deploying agent to: $ENV"
+
+  # ── Deploy the agent inside the correct GitHub Environment ────────────────
+  # FOUNDRY_PROJECT_ENDPOINT and OPENAI_DEPLOYMENT_NAME must be set as
+  # GitHub Environment variables for each environment (dev / test / prod).
+  deploy:
+    needs: setup
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/pipelines/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r src/pipelines/requirements.txt
+
+      - name: Deploy agent(s)
+        env:
+          FOUNDRY_PROJECT_ENDPOINT: ${{ vars.FOUNDRY_PROJECT_ENDPOINT }}
+          OPENAI_DEPLOYMENT_NAME:   ${{ vars.OPENAI_DEPLOYMENT_NAME }}
+          ENVIRONMENT:              ${{ needs.setup.outputs.environment }}
+          AGENT_INPUT:              ${{ github.event.inputs.agent }}
+        run: |
+          if [ -n "$AGENT_INPUT" ]; then
+            echo "Deploying single agent: $AGENT_INPUT"
+            python src/pipelines/deploy-agent.py --env "$ENVIRONMENT" --agent "$AGENT_INPUT"
+          else
+            echo "Deploying all agents in src/agents/"
+            for agent_dir in src/agents/*/; do
+              agent=$(basename "$agent_dir")
+              echo "→ Deploying $agent"
+              python src/pipelines/deploy-agent.py --env "$ENVIRONMENT" --agent "$agent"
+            done
+          fi
+
+      - name: Summary
+        env:
+          ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+          AGENT_INPUT: ${{ github.event.inputs.agent }}
+        run: |
+          echo "### Agent Deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
+          AGENT_LABEL="${AGENT_INPUT:-all}"
+          echo "| Agent | \`$AGENT_LABEL\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Environment | \`$ENVIRONMENT\` |" >> "$GITHUB_STEP_SUMMARY"

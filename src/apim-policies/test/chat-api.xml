@@ -1,0 +1,61 @@
+<policies>
+  <inbound>
+    <base />
+
+    <!--
+      ── Rate limiting (test) ──────────────────────────────────────────────────
+      Moderate cap — mirrors prod behaviour without being as restrictive.
+      Allows load/integration tests to run without constant 429s.
+      No IP filter (test runners need open access).
+    -->
+    <rate-limit-by-key
+      calls="120"
+      renewal-period="60"
+      counter-key="@(context.Subscription.Id)"
+      remaining-calls-header-name="X-RateLimit-Remaining"
+      retry-after-header-name="Retry-After" />
+
+    <!--
+      ── Weekly quota ─────────────────────────────────────────────────────────
+      Loose ceiling so integration test suites don't exhaust it mid-run.
+    -->
+    <quota-by-key
+      calls="5000"
+      renewal-period="604800"
+      counter-key="@(context.Subscription.Id)" />
+
+    <authentication-managed-identity resource="https://cognitiveservices.azure.com" />
+
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+    <set-header name="X-RateLimit-Policy" exists-action="override">
+      <value>test-120rpm-5000pw</value>
+    </set-header>
+  </outbound>
+  <on-error>
+    <base />
+    <choose>
+      <when condition="@(context.Response.StatusCode == 429)">
+        <return-response>
+          <set-status code="429" reason="Too Many Requests" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@{
+            return Newtonsoft.Json.JsonConvert.SerializeObject(new {
+              error = new {
+                code    = "rate_limit_exceeded",
+                message = "Rate limit reached (test: 120 rpm / 5 000 pw). Check Retry-After header.",
+                details = new { subscription = context.Subscription.Id, policy = "test-120rpm-5000pw" }
+              }
+            });
+          }</set-body>
+        </return-response>
+      </when>
+    </choose>
+  </on-error>
+</policies>

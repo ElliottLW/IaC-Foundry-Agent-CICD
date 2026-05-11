@@ -1,0 +1,94 @@
+<policies>
+  <inbound>
+    <base />
+
+    <!--
+      ── IP filtering (prod) ───────────────────────────────────────────────────
+      Block known bad actors before any further processing.
+      RFC-5737 ranges below are demo placeholders — replace with real CIDRs.
+    -->
+    <ip-filter action="forbid">
+      <address>192.0.2.1</address>
+      <address-range from="198.51.100.0" to="198.51.100.255" />
+    </ip-filter>
+
+    <!--
+      ── Rate limiting (prod) ──────────────────────────────────────────────────
+      60 calls per minute per subscription key.
+      Retry-After and X-RateLimit-Remaining headers returned automatically
+      so well-behaved clients can back off gracefully.
+    -->
+    <rate-limit-by-key
+      calls="60"
+      renewal-period="60"
+      counter-key="@(context.Subscription.Id)"
+      remaining-calls-header-name="X-RateLimit-Remaining"
+      retry-after-header-name="Retry-After" />
+
+    <!--
+      ── Weekly quota ─────────────────────────────────────────────────────────
+      Hard cap of 1 000 calls per subscription per rolling 7-day window.
+      Prevents runaway consumers from exhausting the OpenAI TPM budget.
+    -->
+    <quota-by-key
+      calls="1000"
+      renewal-period="604800"
+      counter-key="@(context.Subscription.Id)" />
+
+    <!--
+      ── Auth: APIM → Azure OpenAI via managed identity ───────────────────────
+      No OpenAI API key ever leaves the gateway.
+    -->
+    <authentication-managed-identity resource="https://cognitiveservices.azure.com" />
+
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+    <set-header name="X-RateLimit-Policy" exists-action="override">
+      <value>prod-60rpm-1000pw</value>
+    </set-header>
+  </outbound>
+  <on-error>
+    <base />
+    <choose>
+      <when condition="@(context.Response.StatusCode == 429)">
+        <return-response>
+          <set-status code="429" reason="Too Many Requests" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@{
+            return Newtonsoft.Json.JsonConvert.SerializeObject(new {
+              error = new {
+                code    = "rate_limit_exceeded",
+                message = "Request rate limit reached for this subscription. "
+                        + "Check the Retry-After header and try again.",
+                details = new { subscription = context.Subscription.Id, policy = "prod-60rpm-1000pw" }
+              }
+            });
+          }</set-body>
+        </return-response>
+      </when>
+      <when condition="@(context.Response.StatusCode == 403)">
+        <return-response>
+          <set-status code="403" reason="Forbidden" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@{
+            return Newtonsoft.Json.JsonConvert.SerializeObject(new {
+              error = new {
+                code    = "forbidden",
+                message = "Access denied. Your IP address or credentials are not "
+                        + "authorised to use this API."
+              }
+            });
+          }</set-body>
+        </return-response>
+      </when>
+    </choose>
+  </on-error>
+</policies>

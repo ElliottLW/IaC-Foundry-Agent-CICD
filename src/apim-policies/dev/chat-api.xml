@@ -1,0 +1,51 @@
+<policies>
+  <inbound>
+    <base />
+
+    <!--
+      ── Rate limiting (dev) ───────────────────────────────────────────────────
+      High ceiling — developers need to iterate quickly without hitting walls.
+      No IP filter, no quota; just a soft rate guard to prevent runaway loops.
+    -->
+    <rate-limit-by-key
+      calls="300"
+      renewal-period="60"
+      counter-key="@(context.Subscription.Id)"
+      remaining-calls-header-name="X-RateLimit-Remaining"
+      retry-after-header-name="Retry-After" />
+
+    <authentication-managed-identity resource="https://cognitiveservices.azure.com" />
+
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+    <set-header name="X-RateLimit-Policy" exists-action="override">
+      <value>dev-300rpm</value>
+    </set-header>
+  </outbound>
+  <on-error>
+    <base />
+    <choose>
+      <when condition="@(context.Response.StatusCode == 429)">
+        <return-response>
+          <set-status code="429" reason="Too Many Requests" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@{
+            return Newtonsoft.Json.JsonConvert.SerializeObject(new {
+              error = new {
+                code    = "rate_limit_exceeded",
+                message = "Rate limit reached (dev: 300 rpm). Check Retry-After header.",
+                details = new { subscription = context.Subscription.Id, policy = "dev-300rpm" }
+              }
+            });
+          }</set-body>
+        </return-response>
+      </when>
+    </choose>
+  </on-error>
+</policies>

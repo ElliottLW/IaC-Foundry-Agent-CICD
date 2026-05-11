@@ -1,0 +1,55 @@
+<policies>
+  <inbound>
+    <base />
+
+    <!--
+      ── Rate limiting (dev) ───────────────────────────────────────────────────
+      Generous limit for local development and CI agent testing.
+      No IP filter, no quota.
+    -->
+    <rate-limit-by-key
+      calls="100"
+      renewal-period="60"
+      counter-key="@(context.Subscription.Id)"
+      remaining-calls-header-name="X-RateLimit-Remaining"
+      retry-after-header-name="Retry-After" />
+
+    <set-query-parameter name="api-version" exists-action="skip">
+      <value>v1</value>
+    </set-query-parameter>
+
+    <authentication-managed-identity resource="https://ai.azure.com" />
+
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+    <set-header name="X-RateLimit-Policy" exists-action="override">
+      <value>dev-100rpm</value>
+    </set-header>
+  </outbound>
+  <on-error>
+    <base />
+    <choose>
+      <when condition="@(context.Response.StatusCode == 429)">
+        <return-response>
+          <set-status code="429" reason="Too Many Requests" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@{
+            return Newtonsoft.Json.JsonConvert.SerializeObject(new {
+              error = new {
+                code    = "rate_limit_exceeded",
+                message = "Agent rate limit reached (dev: 100 rpm). Check Retry-After header.",
+                details = new { subscription = context.Subscription.Id, policy = "dev-100rpm" }
+              }
+            });
+          }</set-body>
+        </return-response>
+      </when>
+    </choose>
+  </on-error>
+</policies>
