@@ -64,7 +64,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -r src/pipelines/requirements.txt
+        run: pip install -r src/scripts/requirements.txt
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -96,7 +96,7 @@ jobs:
           else
             echo "Deploying all APIs to $ENVIRONMENT"
           fi
-          python src/pipelines/deploy-api.py $ARGS
+          python src/scripts/deploy-api.py $ARGS
 
       - name: Summary
         if: always()

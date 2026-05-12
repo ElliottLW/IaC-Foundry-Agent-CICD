@@ -12,7 +12,7 @@ Agent config lives alongside Terraform in versioned YAML files:
         instructions.md   ← shared system prompt (can be overridden per env via instructions_file)
 
 Usage:
-    python deploy-agent.py --env dev|test|prod [--agent <dir>] [--dry-run]
+    python src/scripts/deploy-agent.py --env dev|test|prod [--agent <dir>] [--dry-run]
 
 Required env vars (set by Terraform outputs in CI):
     FOUNDRY_PROJECT_ENDPOINT   - Foundry project endpoint URL
@@ -26,8 +26,8 @@ import os
 import sys
 from pathlib import Path
 
-import yaml
-from dotenv import load_dotenv
+import yaml  # type: ignore
+from dotenv import load_dotenv # type: ignore
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import PromptAgentDefinition
