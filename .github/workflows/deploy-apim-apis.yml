@@ -1,0 +1,112 @@
+name: Deploy APIM APIs
+
+on:
+  push:
+    branches: [main, test, dev]
+    paths:
+      - "src/apis/**"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options: [dev, test, prod]
+      api:
+        description: "Specific API to deploy (leave blank to deploy all)"
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # ── Resolve environment from branch or manual input ───────────────────────
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.resolve.outputs.environment }}
+      api:         ${{ steps.resolve.outputs.api }}
+    steps:
+      - name: Resolve target environment and API
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+            API="${{ github.event.inputs.api }}"
+          else
+            case "${{ github.ref_name }}" in
+              main) ENV="prod" ;;
+              test) ENV="test" ;;
+              dev)  ENV="dev"  ;;
+              *)    echo "Unknown branch — cannot resolve environment"; exit 1 ;;
+            esac
+            API=""
+          fi
+          echo "environment=$ENV" >> "$GITHUB_OUTPUT"
+          echo "api=$API"         >> "$GITHUB_OUTPUT"
+          echo "Deploying APIM APIs to: $ENV (api=${API:-all})"
+
+  # ── Import OpenAPI specs + apply policies + attach to product ─────────────
+  deploy:
+    needs: setup
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r src/pipelines/requirements.txt
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate required environment variables
+        run: |
+          : "${APIM_NAME:?GitHub Environment variable APIM_NAME is not set}"
+          : "${RESOURCE_GROUP_NAME:?GitHub Environment variable RESOURCE_GROUP_NAME is not set}"
+        env:
+          APIM_NAME:           ${{ vars.APIM_NAME }}
+          RESOURCE_GROUP_NAME: ${{ vars.RESOURCE_GROUP_NAME }}
+
+      - name: Deploy API(s)
+        env:
+          APIM_NAME:             ${{ vars.APIM_NAME }}
+          RESOURCE_GROUP_NAME:   ${{ vars.RESOURCE_GROUP_NAME }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ENVIRONMENT:           ${{ needs.setup.outputs.environment }}
+          API:                   ${{ needs.setup.outputs.api }}
+        run: |
+          ARGS="--env $ENVIRONMENT"
+          if [ -n "$API" ]; then
+            ARGS="$ARGS --api $API"
+            echo "Deploying single API: $API to $ENVIRONMENT"
+          else
+            echo "Deploying all APIs to $ENVIRONMENT"
+          fi
+          python src/pipelines/deploy-api.py $ARGS
+
+      - name: Summary
+        if: always()
+        env:
+          APIM_NAME:   ${{ vars.APIM_NAME }}
+          ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+          API:         ${{ needs.setup.outputs.api }}
+        run: |
+          echo "### APIM API Deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**APIM instance**: \`$APIM_NAME\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Environment**: \`$ENVIRONMENT\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**API**: \`${API:-all}\`" >> "$GITHUB_STEP_SUMMARY"

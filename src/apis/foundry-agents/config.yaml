@@ -1,0 +1,17 @@
+# API identity — must match the APIM API name (resource name, not display name)
+api_id: foundry-agents
+display_name: "AI Foundry Agents"
+description: "Proxy to the AI Foundry Agents data-plane (create threads, runs, messages)"
+path: agents
+protocols:
+  - https
+subscription_required: true
+subscription_key_header: Ocp-Apim-Subscription-Key
+subscription_key_query: subscription-key
+product_id: ai-platform
+
+# Per-environment backend service URLs
+backends:
+  dev:  "https://lw-ai-foundry-dev.cognitiveservices.azure.com/"
+  test: "https://lw-ai-foundry-test.cognitiveservices.azure.com/"
+  prod: "https://lw-ai-foundry-prod.cognitiveservices.azure.com/"

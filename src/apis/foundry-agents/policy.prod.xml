@@ -5,6 +5,7 @@
     <!--
       ── IP filtering (prod) ───────────────────────────────────────────────────
       Block known bad actors before spinning up an agent thread.
+      RFC-5737 ranges below are placeholders — replace with real CIDRs.
     -->
     <ip-filter action="forbid">
       <address>192.0.2.1</address>

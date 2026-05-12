@@ -5,7 +5,7 @@
     <!--
       ── IP filtering (prod) ───────────────────────────────────────────────────
       Block known bad actors before any further processing.
-      RFC-5737 ranges below are demo placeholders — replace with real CIDRs.
+      RFC-5737 ranges below are placeholders — replace with real CIDRs.
     -->
     <ip-filter action="forbid">
       <address>192.0.2.1</address>
@@ -15,8 +15,6 @@
     <!--
       ── Rate limiting (prod) ──────────────────────────────────────────────────
       60 calls per minute per subscription key.
-      Retry-After and X-RateLimit-Remaining headers returned automatically
-      so well-behaved clients can back off gracefully.
     -->
     <rate-limit-by-key
       calls="60"
@@ -64,8 +62,7 @@
             return Newtonsoft.Json.JsonConvert.SerializeObject(new {
               error = new {
                 code    = "rate_limit_exceeded",
-                message = "Request rate limit reached for this subscription. "
-                        + "Check the Retry-After header and try again.",
+                message = "Rate limit reached (prod: 60 rpm / 1 000 pw). Check Retry-After header.",
                 details = new { subscription = context.Subscription.Id, policy = "prod-60rpm-1000pw" }
               }
             });

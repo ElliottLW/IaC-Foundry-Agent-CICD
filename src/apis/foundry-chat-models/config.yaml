@@ -1,0 +1,17 @@
+# API identity — must match the APIM API name (resource name, not display name)
+api_id: foundry-chat-models
+display_name: "Azure OpenAI Chat Models"
+description: "Secure access to Azure OpenAI chat completion models (GPT-4o, GPT-4o-mini)"
+path: chat
+protocols:
+  - https
+subscription_required: true
+subscription_key_header: Ocp-Apim-Subscription-Key
+subscription_key_query: subscription-key
+product_id: ai-platform
+
+# Per-environment backend service URLs
+backends:
+  dev:  "https://lw-ai-openai-dev.openai.azure.com/openai"
+  test: "https://lw-ai-openai-test.openai.azure.com/openai"
+  prod: "https://lw-ai-openai-prod.openai.azure.com/openai"

@@ -1,0 +1,94 @@
+openapi: "3.0.0"
+info:
+  title: "AI Foundry Agents API"
+  description: "Proxy to the Azure AI Foundry Agents data-plane. Callers interact with threads, messages, and runs; APIM handles auth and rate limiting."
+  version: "v1"
+servers:
+  - url: "https://lw-ai-foundry-dev.cognitiveservices.azure.com/"
+    description: "Dev (overridden per environment at deploy time)"
+
+paths:
+  /threads:
+    post:
+      operationId: CreateThread
+      summary: Create a new conversation thread
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Thread created
+
+  /threads/{threadId}/messages:
+    post:
+      operationId: CreateMessage
+      summary: Add a message to a thread
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Message created
+    get:
+      operationId: ListMessages
+      summary: List messages in a thread
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Message list
+
+  /threads/{threadId}/runs:
+    post:
+      operationId: CreateRun
+      summary: Run an agent on a thread
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Run created
+
+  /threads/{threadId}/runs/{runId}:
+    get:
+      operationId: GetRun
+      summary: Get run status
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Run status
