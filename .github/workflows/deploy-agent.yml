@@ -80,10 +80,11 @@ jobs:
       - name: Deploy agent(s)
         id: deploy
         env:
-          FOUNDRY_PROJECT_ENDPOINT: ${{ vars.FOUNDRY_PROJECT_ENDPOINT }}
-          OPENAI_DEPLOYMENT_NAME:   ${{ vars.OPENAI_DEPLOYMENT_NAME }}
-          ENVIRONMENT:              ${{ needs.setup.outputs.environment }}
-          AGENT_INPUT:              ${{ github.event.inputs.agent }}
+          FOUNDRY_PROJECT_ENDPOINT:              ${{ vars.FOUNDRY_PROJECT_ENDPOINT }}
+          OPENAI_DEPLOYMENT_NAME:                ${{ vars.OPENAI_DEPLOYMENT_NAME }}
+          ENVIRONMENT:                           ${{ needs.setup.outputs.environment }}
+          AGENT_INPUT:                           ${{ github.event.inputs.agent }}
+          APPLICATIONINSIGHTS_CONNECTION_STRING: ${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}
         run: |
           if [ -n "$AGENT_INPUT" ]; then
             echo "Deploying single agent: $AGENT_INPUT"
