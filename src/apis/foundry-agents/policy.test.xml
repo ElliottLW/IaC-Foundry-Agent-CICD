@@ -28,9 +28,16 @@
       renewal-period="604800"
       counter-key="@(context.Subscription.Id)" />
 
-    <set-query-parameter name="api-version" exists-action="skip">
-      <value>v1</value>
+    <!--
+      ── Foundry Responses API routing ────────────────────────────────────────
+    -->
+    <set-query-parameter name="api-version" exists-action="override">
+      <value>2025-05-15-preview</value>
     </set-query-parameter>
+
+    <set-header name="Foundry-Features" exists-action="override">
+      <value>AgentEndpoints=V1Preview</value>
+    </set-header>
 
     <authentication-managed-identity resource="https://ai.azure.com" />
 

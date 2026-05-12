@@ -65,7 +65,7 @@ def deploy_api(api_dir: Path, env: str, apim: str, rg: str, sub_id: str) -> None
     print(f"{'='*60}")
 
     # ── 1. Import / upsert the OpenAPI spec ──────────────────────────────────
-    print("\n[1/3] Importing OpenAPI spec …")
+    print("\n[1/4] Importing OpenAPI spec …")
     az(
         "apim", "api", "import",
         "--resource-group", rg,
@@ -82,7 +82,7 @@ def deploy_api(api_dir: Path, env: str, apim: str, rg: str, sub_id: str) -> None
     print("  ✅ OpenAPI spec imported")
 
     # ── 2. Apply policy XML ───────────────────────────────────────────────────
-    print(f"\n[2/3] Applying policy from {policy_path.name} …")
+    print(f"\n[2/4] Applying policy from {policy_path.name} …")
     if not policy_path.exists():
         print(f"  ⚠️  Policy file {policy_path} not found — skipping policy step")
     else:
@@ -116,7 +116,7 @@ def deploy_api(api_dir: Path, env: str, apim: str, rg: str, sub_id: str) -> None
 
     # ── 3. Attach to product ─────────────────────────────────────────────────
     if product_id:
-        print(f"\n[3/3] Attaching to product '{product_id}' …")
+        print(f"\n[3/4] Attaching to product '{product_id}' …")
         result = az(
             "apim", "product", "api", "check",
             "--resource-group", rg,
@@ -139,7 +139,67 @@ def deploy_api(api_dir: Path, env: str, apim: str, rg: str, sub_id: str) -> None
             )
             print("  ✅ API added to product")
     else:
-        print("\n[3/3] No product_id in config — skipping product attachment")
+        print("\n[3/4] No product_id in config — skipping product attachment")
+
+    # ── 4. Configure Application Insights diagnostic ──────────────────────────
+    # Sampling and verbosity scale down in production to reduce noise and cost.
+    _diag_cfg = {
+        "dev":  {"always_log": "allRequests", "verbosity": "verbose",     "sampling": 100.0},
+        "test": {"always_log": "allRequests", "verbosity": "information", "sampling": 100.0},
+        "prod": {"always_log": "allErrors",   "verbosity": "information", "sampling":  25.0},
+    }
+    logger_name = cfg.get("loggers", {}).get(env)
+    if logger_name:
+        dcfg = _diag_cfg.get(env, _diag_cfg["prod"])
+        print(f"\n[4/4] Configuring Application Insights diagnostic "
+              f"(logger: {logger_name}, sampling: {dcfg['sampling']:.0f}%, "
+              f"verbosity: {dcfg['verbosity']}) …")
+        logger_id = (
+            f"/subscriptions/{sub_id}/resourceGroups/{rg}"
+            f"/providers/Microsoft.ApiManagement/service/{apim}"
+            f"/loggers/{logger_name}"
+        )
+        diag_body = json.dumps({
+            "properties": {
+                "loggerId":                logger_id,
+                "alwaysLog":               dcfg["always_log"],
+                "verbosity":               dcfg["verbosity"],
+                "logClientIp":             True,
+                "httpCorrelationProtocol": "W3C",
+                "sampling": {
+                    "samplingType": "fixed",
+                    "percentage":   dcfg["sampling"],
+                },
+                "request": {
+                    "headers": ["Content-Type", "Foundry-Features", "X-Request-Id"],
+                    "body":    {"bytes": 4096},
+                },
+                "response": {
+                    "headers": ["Content-Type", "X-Request-Id"],
+                    "body":    {"bytes": 4096},
+                },
+            }
+        }, ensure_ascii=False)
+        diag_url = (
+            f"https://management.azure.com/subscriptions/{sub_id}"
+            f"/resourceGroups/{rg}"
+            f"/providers/Microsoft.ApiManagement/service/{apim}"
+            f"/apis/{api_id}/diagnostics/applicationinsights"
+            f"?api-version=2022-08-01"
+        )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json",
+                                         delete=False, encoding="utf-8") as tmp:
+            tmp.write(diag_body)
+            tmp_path = tmp.name
+        try:
+            az("rest", "--method", "put", "--url", diag_url,
+               "--body", f"@{tmp_path}",
+               "--headers", "Content-Type=application/json")
+        finally:
+            os.unlink(tmp_path)
+        print(f"  ✅ Application Insights diagnostic configured")
+    else:
+        print("\n[4/4] No logger configured for this environment — skipping Application Insights diagnostic")
 
 
 def main() -> None:

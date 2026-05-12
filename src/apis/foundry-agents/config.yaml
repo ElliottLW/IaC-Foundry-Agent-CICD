@@ -1,7 +1,7 @@
 # API identity — must match the APIM API name (resource name, not display name)
 api_id: foundry-agents
 display_name: "AI Foundry Agents"
-description: "Proxy to the AI Foundry Agents data-plane (create threads, runs, messages)"
+description: "Proxy to the AI Foundry Agents data-plane (Responses protocol — single-turn agent invocation)"
 path: agents
 protocols:
   - https
@@ -10,8 +10,17 @@ subscription_key_header: Ocp-Apim-Subscription-Key
 subscription_key_query: subscription-key
 product_id: ai-platform
 
-# Per-environment backend service URLs
+# Per-environment backend service URLs.
+# The /agents suffix is required: APIM appends the OpenAPI path (/{agentName}/endpoint/...)
+# directly to this URL, so the full Foundry path resolves correctly.
 backends:
-  dev:  "https://lw-ai-foundry-dev.services.ai.azure.com/api/projects/aip-lw-ai-dev"
-  test: "https://lw-ai-foundry-test.services.ai.azure.com/api/projects/aip-lw-ai-test"
-  prod: "https://lw-ai-foundry-prod.services.ai.azure.com/api/projects/aip-lw-ai-prod"
+  dev:  "https://lw-ai-foundry-dev.services.ai.azure.com/api/projects/aip-lw-ai-dev/agents"
+  test: "https://lw-ai-foundry-test.services.ai.azure.com/api/projects/aip-lw-ai-test/agents"
+  prod: "https://lw-ai-foundry-prod.services.ai.azure.com/api/projects/aip-lw-ai-prod/agents"
+
+# Per-environment APIM logger names for Application Insights diagnostics.
+# These loggers must already exist in the APIM instance (created by IaC / Bicep).
+loggers:
+  dev:  log-apim-dev
+  test: log-apim-test
+  prod: log-apim-prod

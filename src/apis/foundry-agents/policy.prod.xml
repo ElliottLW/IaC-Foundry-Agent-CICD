@@ -33,14 +33,18 @@
       renewal-period="604800"
       counter-key="@(context.Subscription.Id)" />
 
-    <set-query-parameter name="api-version" exists-action="skip">
-      <value>v1</value>
-    </set-query-parameter>
-
     <!--
-      ── Auth: APIM → Foundry Agents data-plane via managed identity ───────────
+      ── Foundry Responses API routing ────────────────────────────────────────
       Token scope is ai.azure.com (not cognitiveservices.azure.com).
     -->
+    <set-query-parameter name="api-version" exists-action="override">
+      <value>2025-05-15-preview</value>
+    </set-query-parameter>
+
+    <set-header name="Foundry-Features" exists-action="override">
+      <value>AgentEndpoints=V1Preview</value>
+    </set-header>
+
     <authentication-managed-identity resource="https://ai.azure.com" />
 
   </inbound>

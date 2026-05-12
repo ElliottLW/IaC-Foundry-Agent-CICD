@@ -1,94 +1,88 @@
 openapi: "3.0.0"
 info:
   title: "AI Foundry Agents API"
-  description: "Proxy to the Azure AI Foundry Agents data-plane. Callers interact with threads, messages, and runs; APIM handles auth and rate limiting."
+  description: |
+    Single-turn agent invocation via the Azure AI Foundry Responses protocol.
+    APIM handles authentication (managed identity → ai.azure.com), injects the
+    api-version and Foundry-Features headers, enforces rate limits, and emits
+    traces to Application Insights.
   version: "v1"
 servers:
-  - url: "https://lw-ai-foundry-dev.cognitiveservices.azure.com/"
-    description: "Dev (overridden per environment at deploy time)"
+  - url: "https://apim-lw-ai-dev.azure-api.net/agents"
+    description: "Dev APIM gateway (service URL overridden per environment at deploy time)"
 
 paths:
-  /threads:
+  /{agentName}/endpoint/protocols/openai/responses:
     post:
-      operationId: CreateThread
-      summary: Create a new conversation thread
+      operationId: InvokeAgentResponse
+      summary: Invoke an agent and receive a synchronous response
+      description: |
+        Sends an input to the named Foundry prompt agent and returns a
+        completed Responses-protocol object. APIM automatically injects:
+          • api-version: 2025-05-15-preview
+          • Foundry-Features: AgentEndpoints=V1Preview
+          • Authorization: Bearer <managed-identity token for ai.azure.com>
+      parameters:
+        - name: agentName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Foundry agent name (e.g. azure-ai-portugal-agent-dev)
+          example: azure-ai-portugal-agent-dev
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - input
+              properties:
+                input:
+                  type: string
+                  description: User message / prompt to send to the agent
+                  example: "What is the capital of Portugal?"
+                previous_response_id:
+                  type: string
+                  description: |
+                    ID of a previous response — enables multi-turn conversation
+                    without managing thread state client-side.
+            example:
+              input: "What is the capital of Portugal?"
       responses:
         "200":
-          description: Thread created
-
-  /threads/{threadId}/messages:
-    post:
-      operationId: CreateMessage
-      summary: Add a message to a thread
-      parameters:
-        - name: threadId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        "200":
-          description: Message created
-    get:
-      operationId: ListMessages
-      summary: List messages in a thread
-      parameters:
-        - name: threadId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Message list
-
-  /threads/{threadId}/runs:
-    post:
-      operationId: CreateRun
-      summary: Run an agent on a thread
-      parameters:
-        - name: threadId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        "200":
-          description: Run created
-
-  /threads/{threadId}/runs/{runId}:
-    get:
-      operationId: GetRun
-      summary: Get run status
-      parameters:
-        - name: threadId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: runId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Run status
+          description: Completed agent response (Foundry Responses object)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Unique response ID
+                    example: resp_07558193b2210ad2006a02f5553fdc8197b78900cda05e332c
+                  status:
+                    type: string
+                    enum: [completed, in_progress, failed]
+                  agent:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        example: azure-ai-portugal-agent-dev
+                      version:
+                        type: string
+                        example: "12"
+                  output:
+                    type: array
+                    items:
+                      type: object
+        "400":
+          description: Bad request (e.g. missing `input` field)
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limit exceeded — check Retry-After header
+        "500":
+          description: Internal server error
