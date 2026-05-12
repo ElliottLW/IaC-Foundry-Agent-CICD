@@ -3,10 +3,19 @@
     <base />
 
     <!--
+      ── IP filtering (test) ───────────────────────────────────────────────────
+      Block known bad actors. Replace placeholders with real CIDRs.
+      No IP block on test runner ranges — add exceptions above if needed.
+    -->
+    <ip-filter action="forbid">
+      <address>192.0.2.1</address>
+      <address-range from="198.51.100.0" to="198.51.100.255" />
+    </ip-filter>
+
+    <!--
       ── Rate limiting (test) ──────────────────────────────────────────────────
       Moderate cap — mirrors prod behaviour without being as restrictive.
       Allows load/integration tests to run without constant 429s.
-      No IP filter (test runners need open access).
     -->
     <rate-limit-by-key
       calls="120"
@@ -35,6 +44,17 @@
     <set-header name="X-RateLimit-Policy" exists-action="override">
       <value>test-120rpm-5000pw</value>
     </set-header>
+    <!-- Tracing headers -->
+    <set-header name="X-Request-Id" exists-action="override">
+      <value>@(context.RequestId)</value>
+    </set-header>
+    <set-header name="X-Environment" exists-action="override">
+      <value>test</value>
+    </set-header>
+    <set-header name="X-Powered-By" exists-action="override">
+      <value>L-W Tech AI Gateway</value>
+    </set-header>
+    <set-header name="Authorization" exists-action="delete" />
   </outbound>
   <on-error>
     <base />

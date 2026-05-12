@@ -3,9 +3,18 @@
     <base />
 
     <!--
+      ── IP filtering (dev) ───────────────────────────────────────────────────
+      Block known bad actors. Replace placeholders with real CIDRs.
+    -->
+    <ip-filter action="forbid">
+      <address>192.0.2.1</address>
+      <address-range from="198.51.100.0" to="198.51.100.255" />
+    </ip-filter>
+
+    <!--
       ── Rate limiting (dev) ───────────────────────────────────────────────────
       High ceiling — developers need to iterate quickly without hitting walls.
-      No IP filter, no quota; just a soft rate guard to prevent runaway loops.
+      No quota; just a soft rate guard to prevent runaway loops.
     -->
     <rate-limit-by-key
       calls="300"
@@ -25,6 +34,17 @@
     <set-header name="X-RateLimit-Policy" exists-action="override">
       <value>dev-300rpm</value>
     </set-header>
+    <!-- Tracing headers -->
+    <set-header name="X-Request-Id" exists-action="override">
+      <value>@(context.RequestId)</value>
+    </set-header>
+    <set-header name="X-Environment" exists-action="override">
+      <value>dev</value>
+    </set-header>
+    <set-header name="X-Powered-By" exists-action="override">
+      <value>L-W Tech AI Gateway</value>
+    </set-header>
+    <set-header name="Authorization" exists-action="delete" />
   </outbound>
   <on-error>
     <base />
