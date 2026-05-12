@@ -3,3 +3,7 @@ display_name: "Azure & AI Portugal Agent [DEV]"
 description: "AI assistant for Portuguese-speaking teams navigating Microsoft Azure and AI services, built by L-W Tech."
 instructions_file: "instructions.dev.md"
 guardrails_file: "guardrails.md"
+starter_prompts:
+  - "What Azure services should I use for a serverless API?"
+  - "Como configuro o Azure API Management?"
+  - "Explain Azure RBAC in simple terms"

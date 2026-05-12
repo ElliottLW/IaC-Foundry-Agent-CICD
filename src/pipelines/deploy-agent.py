@@ -88,13 +88,14 @@ def main():
 
     agent_dir = Path(args.agent) if Path(args.agent).is_absolute() else _AGENTS_ROOT / args.agent
 
-    config       = load_config(agent_dir, args.env)
-    name         = config["name"]          # slug: alphanumeric + hyphens, ≤63 chars
-    display_name = config.get("display_name", name)
-    description  = config.get("description", display_name)
-    instructions = load_instructions(agent_dir, config)
-    model        = config.get("model") or require_env("OPENAI_DEPLOYMENT_NAME")
-    endpoint     = require_env("FOUNDRY_PROJECT_ENDPOINT")
+    config        = load_config(agent_dir, args.env)
+    name          = config["name"]
+    display_name  = config.get("display_name", name)
+    description   = config.get("description", display_name)
+    instructions  = load_instructions(agent_dir, config)
+    model         = config.get("model") or require_env("OPENAI_DEPLOYMENT_NAME")
+    endpoint      = require_env("FOUNDRY_PROJECT_ENDPOINT")
+    starter_prompts = config.get("starter_prompts", [])
 
     print(f"\n  Deploying '{name}' ({display_name}) → {args.env.upper()}  |  model: {model}\n")
 
@@ -103,16 +104,22 @@ def main():
         return
 
     client = AIProjectClient(endpoint=endpoint, credential=DefaultAzureCredential(), allow_preview=True)
+
+    metadata = {
+        "welcomeMessage": display_name,
+        "environment":    args.env,
+        "deployed_by":    "ci-cd-pipeline",
+        "version":        os.environ.get("GITHUB_SHA", "local"),
+    }
+    # Starter prompts: stored as starterPrompt1, starterPrompt2, starterPrompt3 in metadata
+    for i, prompt in enumerate(starter_prompts[:3], start=1):
+        metadata[f"starterPrompt{i}"] = prompt
+
     agent  = client.agents.create_version(
         agent_name=name,
         definition=PromptAgentDefinition(model=model, instructions=instructions),
         description=description or None,
-        metadata={
-            "welcomeMessage": display_name,
-            "environment":    args.env,
-            "deployed_by":    "ci-cd-pipeline",
-            "version":        os.environ.get("GITHUB_SHA", "local"),
-        },
+        metadata=metadata,
     )
 
     print(f"  Done. Agent ID: {agent.id}")
