@@ -83,6 +83,12 @@ jobs:
           OPENAI_DEPLOYMENT_NAME:   ${{ vars.OPENAI_DEPLOYMENT_NAME }}
           ENVIRONMENT:              ${{ needs.setup.outputs.environment }}
           AGENT_INPUT:              ${{ github.event.inputs.agent }}
+          # ARM env vars for Agent Application publishing
+          # Set these as GitHub Environment variables for each environment (dev/test/prod)
+          AZURE_SUBSCRIPTION_ID:    ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          FOUNDRY_RESOURCE_GROUP:   ${{ vars.FOUNDRY_RESOURCE_GROUP }}
+          FOUNDRY_ACCOUNT_NAME:     ${{ vars.FOUNDRY_ACCOUNT_NAME }}
+          FOUNDRY_PROJECT_NAME:     ${{ vars.FOUNDRY_PROJECT_NAME }}
         run: |
           if [ -n "$AGENT_INPUT" ]; then
             echo "Deploying single agent: $AGENT_INPUT"
@@ -100,6 +106,8 @@ jobs:
         env:
           ENVIRONMENT: ${{ needs.setup.outputs.environment }}
           AGENT_INPUT: ${{ github.event.inputs.agent }}
+          FOUNDRY_ACCOUNT_NAME: ${{ vars.FOUNDRY_ACCOUNT_NAME }}
+          FOUNDRY_PROJECT_NAME: ${{ vars.FOUNDRY_PROJECT_NAME }}
         run: |
           echo "### Agent Deployment" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
@@ -108,3 +116,6 @@ jobs:
           AGENT_LABEL="${AGENT_INPUT:-all}"
           echo "| Agent | \`$AGENT_LABEL\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Environment | \`$ENVIRONMENT\` |" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$FOUNDRY_ACCOUNT_NAME" ] && [ -n "$FOUNDRY_PROJECT_NAME" ]; then
+            echo "| Agent endpoint | \`https://${FOUNDRY_ACCOUNT_NAME}.services.ai.azure.com/api/projects/${FOUNDRY_PROJECT_NAME}/applications/${AGENT_LABEL}/protocols/openai/v1/responses\` |" >> "$GITHUB_STEP_SUMMARY"
+          fi
