@@ -129,48 +129,6 @@ def activate_agent_endpoint(client: "AIProjectClient", agent_name: str, dry_run:
     return invoke_url
 
 
-def configure_agent_tracing(
-    client: "AIProjectClient",
-    agent_name: str,
-    connection_string: str,
-    dry_run: bool = False,
-) -> None:
-    """
-    PATCH the agent to enable Application Insights tracing.
-
-    Foundry will emit one trace span per agent invocation, capturing:
-      • Input / output content
-      • Model calls (tokens, latency)
-      • Tool/function calls
-      • Agent version and run metadata
-
-    The connection string is environment-specific and must be passed via
-    the APPLICATIONINSIGHTS_CONNECTION_STRING environment variable in CI.
-    """
-    endpoint_base = client._config.endpoint.rstrip("/")
-    log.info("Configuring Application Insights tracing for '%s'...", agent_name)
-    if not dry_run:
-        from azure.core.rest import HttpRequest
-        body = json.dumps({
-            "tracing": {
-                "applicationInsightsConnectionString": connection_string
-            }
-        })
-        req = HttpRequest(
-            method="PATCH",
-            url=f"{endpoint_base}/agents/{agent_name}",
-            params={"api-version": _ENDPOINT_API_VERSION},
-            headers={
-                "Content-Type": "application/json",
-                "Foundry-Features": _ENDPOINT_FEATURE_HEADER,
-            },
-            content=body,
-        )
-        resp = client.send_request(req)
-        resp.raise_for_status()
-        log.info("Tracing configured for '%s'.", agent_name)
-
-
 def main():
     load_dotenv()  # no-op in CI; loads .env for local dev
 
@@ -221,14 +179,6 @@ def main():
     # ── Activate the stable Responses endpoint ─────────────────────────────────
     invoke_url = activate_agent_endpoint(client, name, dry_run=args.dry_run)
     print(f"  Endpoint: POST {invoke_url}")
-
-    # ── Enable Application Insights tracing ──────────────────────────────
-    appinsights_conn_str = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
-    if appinsights_conn_str:
-        configure_agent_tracing(client, name, appinsights_conn_str, dry_run=args.dry_run)
-        print("  Tracing: Application Insights enabled")
-    else:
-        log.info("APPLICATIONINSIGHTS_CONNECTION_STRING not set — tracing not configured.")
 
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
