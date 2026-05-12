@@ -12,6 +12,6 @@ product_id: ai-platform
 
 # Per-environment backend service URLs
 backends:
-  dev:  "https://lw-ai-foundry-dev.cognitiveservices.azure.com/"
-  test: "https://lw-ai-foundry-test.cognitiveservices.azure.com/"
-  prod: "https://lw-ai-foundry-prod.cognitiveservices.azure.com/"
+  dev:  "https://lw-ai-foundry-dev.services.ai.azure.com/api/projects/aip-lw-ai-dev"
+  test: "https://lw-ai-foundry-test.services.ai.azure.com/api/projects/aip-lw-ai-test"
+  prod: "https://lw-ai-foundry-prod.services.ai.azure.com/api/projects/aip-lw-ai-prod"
