@@ -106,7 +106,7 @@ def main():
     agent  = client.agents.create_version(
         agent_name=name,
         body={
-            "displayName": display_name,
+            "welcomeMessage": display_name,
             "description": description or None,
             "definition":  PromptAgentDefinition(model=model, instructions=instructions),
             "metadata": {
