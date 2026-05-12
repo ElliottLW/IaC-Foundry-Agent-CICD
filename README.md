@@ -57,7 +57,6 @@ Both can also be triggered manually via **Actions → Run workflow**.
         ├── deploy-agent.py         # creates/updates agent versions in Foundry
         ├── deploy-api.py           # pushes APIM policies + configures diagnostics
         ├── requirements.txt
-        └── .env.example            # local dev reference (gitignored when filled)
 ```
 
 ---
