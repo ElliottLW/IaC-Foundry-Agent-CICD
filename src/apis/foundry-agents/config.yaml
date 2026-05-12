@@ -21,6 +21,6 @@ backends:
 # Per-environment APIM logger names for Application Insights diagnostics.
 # These loggers must already exist in the APIM instance (created by IaC / Bicep).
 loggers:
-  dev:  log-apim-dev
-  test: log-apim-test
-  prod: log-apim-prod
+  dev:  apim-logger-dev
+  test: apim-logger-test
+  prod: apim-logger-prod
