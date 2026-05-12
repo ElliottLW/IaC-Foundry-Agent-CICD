@@ -8,13 +8,13 @@ Changes to agent configuration or API policies are deployed automatically when y
 
 ## How it works
 
+### Branch deploys (day-to-day)
+
 ```
 dev branch  ──push──▶  deploy to dev  environment
 test branch ──push──▶  deploy to test environment
-main branch ──push──▶  deploy to prod environment (approval gate)
+main branch ──push──▶  deploy to prod environment
 ```
-
-Two independent workflows:
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
@@ -22,6 +22,18 @@ Two independent workflows:
 | **Deploy APIM Policies** | Push to `src/apim-policies/**` | Pushes XML policy files to Azure API Management |
 
 Both can also be triggered manually via **Actions → Run workflow**.
+
+### Promotion pipeline (controlled releases)
+
+The **Promote Agent** workflow deploys an agent through all three environments in sequence, with a mandatory approval gate before each stage:
+
+```
+ deploy-dev ──(approve)──▶ deploy-test ──(approve)──▶ deploy-prod
+```
+
+Trigger it manually via **Actions → Promote Agent → Run workflow**. An optional agent name can be specified — leave blank to promote all agents. If any stage fails, all downstream stages are blocked automatically.
+
+Approval gates are configured via **Settings → Environments** — each environment requires a reviewer to click **Review deployments → Approve** before the next stage proceeds.
 
 ---
 
@@ -31,7 +43,8 @@ Both can also be triggered manually via **Actions → Run workflow**.
 ├── .github/
 │   └── workflows/
 │       ├── deploy-agent.yml        # triggers on push to src/agents/**
-│       └── deploy-apim-apis.yml    # triggers on push to src/apim-policies/**
+│       ├── deploy-apim-apis.yml    # triggers on push to src/apim-policies/**
+│       └── promote-agent.yml       # manual promotion: dev → test → prod with approval gates
 └── src/
     ├── agents/
     │   └── <agent-name>/           # one folder per agent
@@ -74,7 +87,7 @@ Both can also be triggered manually via **Actions → Run workflow**.
 
 In **Settings → Environments**, create three environments: `dev`, `test`, `prod`.
 
-Add a required reviewer to `prod` if you want a manual approval gate before production deployments.
+Add required reviewers to each environment to enable approval gates in the **Promote Agent** workflow. The reviewer will be prompted to approve before each stage runs.
 
 ### 2. Add GitHub Secrets
 
