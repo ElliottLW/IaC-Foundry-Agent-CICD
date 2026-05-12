@@ -108,9 +108,10 @@ def main():
         definition=PromptAgentDefinition(model=model, instructions=instructions),
         description=description or None,
         metadata={
-            "environment": args.env,
-            "deployed_by": "ci-cd-pipeline",
-            "version":     os.environ.get("GITHUB_SHA", "local"),
+            "display_name":  display_name,
+            "environment":   args.env,
+            "deployed_by":   "ci-cd-pipeline",
+            "version":       os.environ.get("GITHUB_SHA", "local"),
         },
     )
 
