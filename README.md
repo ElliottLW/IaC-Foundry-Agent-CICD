@@ -28,28 +28,36 @@ Both can also be triggered manually via **Actions → Run workflow**.
 ## Repository structure
 
 ```
-src/
-  agents/
-    azure-ai-portugal-agent/
-      dev.yaml          ← agent config per environment
-      test.yaml
-      prod.yaml
-      instructions.md   ← shared system prompt
-  apim-policies/
-    dev/
-      chat-api.xml      ← rate limits, auth, error handling
-      agents-api.xml
-    test/
-      chat-api.xml
-      agents-api.xml
-    prod/
-      chat-api.xml      ← stricter limits + IP filtering
-      agents-api.xml
-  scripts/
-    deploy-agent.py     ← Python deployment script
-    deploy-api.py       ← Python APIM policy deployment script
-    requirements.txt
-    .env.example        ← local dev reference
+├── .github/
+│   └── workflows/
+│       ├── deploy-agent.yml        # triggers on push to src/agents/**
+│       └── deploy-apim-apis.yml    # triggers on push to src/apim-policies/**
+└── src/
+    ├── agents/
+    │   └── <agent-name>/           # one folder per agent
+    │       ├── dev.yaml            # agent config for dev
+    │       ├── test.yaml           # agent config for test
+    │       ├── prod.yaml           # agent config for prod
+    │       ├── instructions.md     # shared system prompt (default)
+    │       ├── instructions.dev.md # optional per-env override
+    │       ├── instructions.test.md
+    │       ├── instructions.prod.md
+    │       └── guardrails.md       # optional, auto-appended to instructions
+    ├── apim-policies/
+    │   ├── dev/
+    │   │   ├── agents-api.xml      # Foundry agents API policy
+    │   │   └── chat-api.xml        # Chat/completions API policy
+    │   ├── test/
+    │   │   ├── agents-api.xml
+    │   │   └── chat-api.xml
+    │   └── prod/
+    │       ├── agents-api.xml      # stricter limits + IP filtering
+    │       └── chat-api.xml
+    └── scripts/
+        ├── deploy-agent.py         # creates/updates agent versions in Foundry
+        ├── deploy-api.py           # pushes APIM policies + configures diagnostics
+        ├── requirements.txt
+        └── .env.example            # local dev reference (gitignored when filled)
 ```
 
 ---
