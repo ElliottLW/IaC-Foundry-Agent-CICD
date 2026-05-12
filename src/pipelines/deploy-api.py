@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -85,13 +86,13 @@ def deploy_api(api_dir: Path, env: str, apim: str, rg: str, sub_id: str) -> None
     if not policy_path.exists():
         print(f"  ⚠️  Policy file {policy_path} not found — skipping policy step")
     else:
-        policy_xml = policy_path.read_text()
+        policy_xml = policy_path.read_text(encoding="utf-8")
         body = json.dumps({
             "properties": {
                 "format": "xml",
                 "value":  policy_xml,
             }
-        })
+        }, ensure_ascii=False)
         url = (
             f"https://management.azure.com/subscriptions/{sub_id}"
             f"/resourceGroups/{rg}"
@@ -99,8 +100,18 @@ def deploy_api(api_dir: Path, env: str, apim: str, rg: str, sub_id: str) -> None
             f"/apis/{api_id}/policies/policy"
             f"?api-version=2022-08-01"
         )
-        az("rest", "--method", "put", "--url", url, "--body", body,
-           "--headers", "Content-Type=application/json")
+        # Write body to a temp file to avoid shell escaping issues with
+        # Unicode characters and APIM C# policy expressions (@(...))
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json",
+                                         delete=False, encoding="utf-8") as tmp:
+            tmp.write(body)
+            tmp_path = tmp.name
+        try:
+            az("rest", "--method", "put", "--url", url,
+               "--body", f"@{tmp_path}",
+               "--headers", "Content-Type=application/json")
+        finally:
+            os.unlink(tmp_path)
         print("  ✅ Policy applied")
 
     # ── 3. Attach to product ─────────────────────────────────────────────────
