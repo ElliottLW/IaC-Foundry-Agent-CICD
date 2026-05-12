@@ -15,3 +15,9 @@ backends:
   dev:  "https://lw-ai-openai-dev.openai.azure.com/openai"
   test: "https://lw-ai-openai-test.openai.azure.com/openai"
   prod: "https://lw-ai-openai-prod.openai.azure.com/openai"
+
+# Per-environment APIM logger names for Application Insights diagnostics.
+loggers:
+  dev:  log-apim-dev
+  test: log-apim-test
+  prod: log-apim-prod

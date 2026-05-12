@@ -144,9 +144,9 @@ def deploy_api(api_dir: Path, env: str, apim: str, rg: str, sub_id: str) -> None
     # ── 4. Configure Application Insights diagnostic ──────────────────────────
     # Sampling and verbosity scale down in production to reduce noise and cost.
     _diag_cfg = {
-        "dev":  {"always_log": "allRequests", "verbosity": "verbose",     "sampling": 100.0},
-        "test": {"always_log": "allRequests", "verbosity": "information", "sampling": 100.0},
-        "prod": {"always_log": "allErrors",   "verbosity": "information", "sampling":  25.0},
+        "dev":  {"always_log": None,         "verbosity": "verbose",     "sampling": 100.0},
+        "test": {"always_log": None,         "verbosity": "information", "sampling": 100.0},
+        "prod": {"always_log": "allErrors",  "verbosity": "information", "sampling":  25.0},
     }
     logger_name = cfg.get("loggers", {}).get(env)
     if logger_name:
@@ -159,27 +159,27 @@ def deploy_api(api_dir: Path, env: str, apim: str, rg: str, sub_id: str) -> None
             f"/providers/Microsoft.ApiManagement/service/{apim}"
             f"/loggers/{logger_name}"
         )
-        diag_body = json.dumps({
-            "properties": {
-                "loggerId":                logger_id,
-                "alwaysLog":               dcfg["always_log"],
-                "verbosity":               dcfg["verbosity"],
-                "logClientIp":             True,
-                "httpCorrelationProtocol": "W3C",
-                "sampling": {
-                    "samplingType": "fixed",
-                    "percentage":   dcfg["sampling"],
-                },
-                "request": {
-                    "headers": ["Content-Type", "Foundry-Features", "X-Request-Id"],
-                    "body":    {"bytes": 4096},
-                },
-                "response": {
-                    "headers": ["Content-Type", "X-Request-Id"],
-                    "body":    {"bytes": 4096},
-                },
-            }
-        }, ensure_ascii=False)
+        diag_props: dict = {
+            "loggerId":                logger_id,
+            "verbosity":               dcfg["verbosity"],
+            "logClientIp":             True,
+            "httpCorrelationProtocol": "W3C",
+            "sampling": {
+                "samplingType": "fixed",
+                "percentage":   dcfg["sampling"],
+            },
+            "request": {
+                "headers": ["Content-Type", "Foundry-Features", "X-Request-Id"],
+                "body":    {"bytes": 4096},
+            },
+            "response": {
+                "headers": ["Content-Type", "X-Request-Id"],
+                "body":    {"bytes": 4096},
+            },
+        }
+        if dcfg["always_log"] is not None:
+            diag_props["alwaysLog"] = dcfg["always_log"]
+        diag_body = json.dumps({"properties": diag_props}, ensure_ascii=False)
         diag_url = (
             f"https://management.azure.com/subscriptions/{sub_id}"
             f"/resourceGroups/{rg}"
