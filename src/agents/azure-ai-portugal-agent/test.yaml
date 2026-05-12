@@ -4,6 +4,6 @@ description: "AI assistant for Portuguese-speaking teams navigating Microsoft Az
 instructions_file: "instructions.test.md"
 guardrails_file: "guardrails.md"
 starter_prompts:
-  - "What Azure services should I use for a serverless API?"
+  - "Como posso reduzir os custos no Azure?"
   - "Como configuro o Azure API Management?"
   - "Explain Azure RBAC in simple terms"

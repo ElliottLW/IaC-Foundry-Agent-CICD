@@ -111,9 +111,8 @@ def main():
         "deployed_by":    "ci-cd-pipeline",
         "version":        os.environ.get("GITHUB_SHA", "local"),
     }
-    # Starter prompts: stored as starterPrompt1, starterPrompt2, starterPrompt3 in metadata
-    for i, prompt in enumerate(starter_prompts[:3], start=1):
-        metadata[f"starterPrompt{i}"] = prompt
+    if starter_prompts:
+        metadata["starterPrompts"] = "\n".join(starter_prompts[:3])
 
     agent  = client.agents.create_version(
         agent_name=name,
