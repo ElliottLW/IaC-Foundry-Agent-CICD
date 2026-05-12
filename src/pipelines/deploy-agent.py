@@ -105,13 +105,15 @@ def main():
     client = AIProjectClient(endpoint=endpoint, credential=DefaultAzureCredential(), allow_preview=True)
     agent  = client.agents.create_version(
         agent_name=name,
-        definition=PromptAgentDefinition(model=model, instructions=instructions),
-        description=description or None,
-        metadata={
-            "display_name":  display_name,
-            "environment":   args.env,
-            "deployed_by":   "ci-cd-pipeline",
-            "version":       os.environ.get("GITHUB_SHA", "local"),
+        body={
+            "displayName": display_name,
+            "description": description or None,
+            "definition":  PromptAgentDefinition(model=model, instructions=instructions),
+            "metadata": {
+                "environment":  args.env,
+                "deployed_by":  "ci-cd-pipeline",
+                "version":      os.environ.get("GITHUB_SHA", "local"),
+            },
         },
     )
 
