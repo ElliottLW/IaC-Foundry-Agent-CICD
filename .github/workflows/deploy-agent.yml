@@ -72,10 +72,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: src/pipelines/requirements.txt
+          cache-dependency-path: src/scripts/requirements.txt
 
       - name: Install dependencies
-        run: pip install -r src/pipelines/requirements.txt
+        run: pip install -r src/scripts/requirements.txt
 
       - name: Deploy agent(s)
         id: deploy
@@ -87,13 +87,13 @@ jobs:
         run: |
           if [ -n "$AGENT_INPUT" ]; then
             echo "Deploying single agent: $AGENT_INPUT"
-            python src/pipelines/deploy-agent.py --env "$ENVIRONMENT" --agent "$AGENT_INPUT"
+            python src/scripts/deploy-agent.py --env "$ENVIRONMENT" --agent "$AGENT_INPUT"
           else
             echo "Deploying all agents in src/agents/"
             for agent_dir in src/agents/*/; do
               agent=$(basename "$agent_dir")
               echo "→ Deploying $agent"
-              python src/pipelines/deploy-agent.py --env "$ENVIRONMENT" --agent "$agent"
+              python src/scripts/deploy-agent.py --env "$ENVIRONMENT" --agent "$agent"
             done
           fi
 

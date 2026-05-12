@@ -21,7 +21,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-import yaml
+import yaml # type: ignore
 
 
 APIS_DIR = Path(__file__).parent.parent / "apis"
