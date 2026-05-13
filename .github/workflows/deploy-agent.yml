@@ -1,19 +1,10 @@
 name: Deploy Agent
 
-# Deploys agents automatically when src/agents/** changes on a long-lived branch.
-# Branch → environment mapping:
-#   dev  → dev
-#   test → test
-#   main → prod
-#
-# Can also be triggered manually to deploy a specific agent to any environment.
+# Deploys one or all agents to a chosen environment.
+# Trigger manually via Actions → Deploy Agent → Run workflow.
+# For a full dev → test → prod promotion, use the Promote Agent workflow instead.
 
 on:
-  push:
-    branches: [dev, test, main]
-    paths:
-      - "src/agents/**"
-      - "src/scripts/deploy-agent.py"
   workflow_dispatch:
     inputs:
       environment:
@@ -35,35 +26,12 @@ env:
   PYTHON_VERSION: "3.12"
 
 jobs:
-  # ── Resolve environment from branch (push) or input (manual) ─────────────
-  setup:
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.resolve.outputs.environment }}
-    steps:
-      - name: Resolve target environment
-        id: resolve
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ENV="${{ inputs.environment }}"
-          else
-            case "${{ github.ref_name }}" in
-              main) ENV="prod" ;;
-              test) ENV="test" ;;
-              dev)  ENV="dev"  ;;
-              *)    echo "Unknown branch — cannot resolve environment"; exit 1 ;;
-            esac
-          fi
-          echo "environment=$ENV" >> "$GITHUB_OUTPUT"
-          echo "Resolved environment: $ENV"
-
   # ── Deploy the agent inside the correct GitHub Environment ────────────────
   # FOUNDRY_PROJECT_ENDPOINT and OPENAI_DEPLOYMENT_NAME must be set as
   # GitHub Environment variables for each environment (dev / test / prod).
   deploy:
-    needs: setup
     runs-on: ubuntu-latest
-    environment: ${{ needs.setup.outputs.environment }}
+    environment: ${{ inputs.environment }}
 
     steps:
       - name: Checkout
@@ -93,31 +61,28 @@ jobs:
           OPENAI_DEPLOYMENT_NAME:   ${{ vars.OPENAI_DEPLOYMENT_NAME }}
           AGENT_INPUT:              ${{ inputs.agent }}
         run: |
-          ENV="${{ needs.setup.outputs.environment }}"
           if [ -n "$AGENT_INPUT" ]; then
             echo "Deploying single agent: $AGENT_INPUT"
-            python src/scripts/deploy-agent.py --env "$ENV" --agent "$AGENT_INPUT"
+            python src/scripts/deploy-agent.py --env "${{ inputs.environment }}" --agent "$AGENT_INPUT"
           else
             echo "Deploying all agents in src/agents/"
             for agent_dir in src/agents/*/; do
               agent=$(basename "$agent_dir")
               echo "→ Deploying $agent"
-              python src/scripts/deploy-agent.py --env "$ENV" --agent "$agent"
+              python src/scripts/deploy-agent.py --env "${{ inputs.environment }}" --agent "$agent"
             done
           fi
 
       - name: Summary
         env:
-          ENVIRONMENT: ${{ needs.setup.outputs.environment }}
-          INVOKE_URL:  ${{ steps.deploy.outputs.invoke_url }}
+          INVOKE_URL: ${{ steps.deploy.outputs.invoke_url }}
         run: |
           echo "### Agent Deployment" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
-          AGENT_LABEL="${AGENT_INPUT:-all}"
-          echo "| Agent | \`$AGENT_LABEL\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Environment | \`$ENVIRONMENT\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Agent | \`${AGENT_INPUT:-all}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Environment | \`${{ inputs.environment }}\` |" >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$INVOKE_URL" ]; then
             echo "| Invoke URL | \`$INVOKE_URL\` |" >> "$GITHUB_STEP_SUMMARY"
           fi
