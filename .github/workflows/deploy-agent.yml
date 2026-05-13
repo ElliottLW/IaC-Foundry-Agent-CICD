@@ -1,10 +1,6 @@
 name: Deploy Agent
 
 on:
-  push:
-    branches: [main, test, dev]
-    paths:
-      - "src/agents/**"
   workflow_dispatch:
     inputs:
       environment:
