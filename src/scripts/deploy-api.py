@@ -32,10 +32,10 @@ def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, check=check, capture_output=False, text=True)
 
 
-def az(*args, capture: bool = False) -> subprocess.CompletedProcess:
+def az(*args, capture: bool = False, check: bool = True) -> subprocess.CompletedProcess:
     cmd = ["az", *args]
     print(f"  $ {' '.join(cmd)}")
-    result = subprocess.run(cmd, check=True, capture_output=capture, text=True)
+    result = subprocess.run(cmd, check=check, capture_output=capture, text=True)
     return result
 
 
@@ -124,6 +124,7 @@ def deploy_api(api_dir: Path, env: str, apim: str, rg: str, sub_id: str) -> None
             "--product-id",     product_id,
             "--api-id",         api_id,
             capture=True,
+            check=False,
         )
         already_linked = result.returncode == 0
 
