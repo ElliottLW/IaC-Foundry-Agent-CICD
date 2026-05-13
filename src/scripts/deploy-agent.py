@@ -94,6 +94,60 @@ def load_instructions(agent_dir: Path, config: dict, env: str) -> str:
 
 _ENDPOINT_API_VERSION = "2025-05-15-preview"
 _ENDPOINT_FEATURE_HEADER = "AgentEndpoints=V1Preview"
+_CAPABILITY_HOST_NAME = "default"
+
+
+def ensure_capability_host(client: "AIProjectClient", dry_run: bool = False) -> None:
+    """
+    Idempotently provision the project-level capabilityHost (kind: Agents).
+
+    The capabilityHost is a project-scoped runtime container required for:
+      - Agent thread execution
+      - Foundry telemetry / tracing
+      - Tool routing
+
+    Without it, agent invocations may succeed in a degraded stateless mode
+    (Responses API) but NO traces will appear in the Foundry portal.
+
+    This is a PUT with no side-effects if already provisioned — safe to run on
+    every deployment.
+    """
+    from azure.core.rest import HttpRequest
+
+    endpoint_base = client._config.endpoint.rstrip("/")
+    url = f"{endpoint_base}/capabilityHosts/{_CAPABILITY_HOST_NAME}"
+    params = {"api-version": _ENDPOINT_API_VERSION}
+
+    # Check if already provisioned
+    if not dry_run:
+        get_req = HttpRequest(method="GET", url=url, params=params)
+        get_resp = client.send_request(get_req)
+        if get_resp.status_code == 200:
+            state = get_resp.json().get("properties", {}).get("provisioningState", "unknown")
+            log.info("capabilityHost '%s' already exists (provisioningState: %s) — skipping.", _CAPABILITY_HOST_NAME, state)
+            return
+
+    log.info("Provisioning capabilityHost '%s'...", _CAPABILITY_HOST_NAME)
+    if dry_run:
+        log.info("DRY RUN — would PUT capabilityHost '%s'.", _CAPABILITY_HOST_NAME)
+        return
+
+    put_body = json.dumps({
+        "properties": {
+            "capabilityHostKind": "Agents"
+        }
+    })
+    put_req = HttpRequest(
+        method="PUT",
+        url=url,
+        params=params,
+        headers={"Content-Type": "application/json"},
+        content=put_body,
+    )
+    put_resp = client.send_request(put_req)
+    put_resp.raise_for_status()
+    state = put_resp.json().get("properties", {}).get("provisioningState", "unknown")
+    log.info("capabilityHost '%s' provisioned (provisioningState: %s).", _CAPABILITY_HOST_NAME, state)
 
 
 def activate_agent_endpoint(client: "AIProjectClient", agent_name: str, dry_run: bool = False) -> str:
@@ -172,6 +226,11 @@ def main():
 
     credential = DefaultAzureCredential()
     client = AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True)
+
+    # ── Ensure capabilityHost is provisioned ───────────────────────────────────
+    # Required for agent runtime telemetry / Foundry tracing to function.
+    # Idempotent — no-op if already provisioned.
+    ensure_capability_host(client, dry_run=args.dry_run)
 
     metadata = {
         "welcomeMessage": display_name,
