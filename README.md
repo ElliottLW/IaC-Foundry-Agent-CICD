@@ -28,27 +28,35 @@ Both can also be triggered manually via **Actions → Run workflow**.
 ## Repository structure
 
 ```
-src/
-  agents/
-    azure-ai-portugal-agent/
-      dev.yaml          ← agent config per environment
-      test.yaml
-      prod.yaml
-      instructions.md   ← shared system prompt
-  apim-policies/
-    dev/
-      chat-api.xml      ← rate limits, auth, error handling
-      agents-api.xml
-    test/
-      chat-api.xml
-      agents-api.xml
-    prod/
-      chat-api.xml      ← stricter limits + IP filtering
-      agents-api.xml
-  pipelines/
-    deploy-agent.py     ← Python deployment script
-    requirements.txt
-    .env.example        ← local dev reference
+├── .github/
+│   └── workflows/
+│       ├── deploy-agent.yml        # triggers on push to src/agents/**
+│       └── deploy-apim-apis.yml    # triggers on push to src/apim-policies/**
+└── src/
+    ├── agents/
+    │   └── <agent-name>/           # one folder per agent
+    │       ├── dev.yaml            # agent config for dev
+    │       ├── test.yaml           # agent config for test
+    │       ├── prod.yaml           # agent config for prod
+    │       ├── instructions.md     # shared system prompt (default)
+    │       ├── instructions.dev.md # optional per-env override
+    │       ├── instructions.test.md
+    │       ├── instructions.prod.md
+    │       └── guardrails.md       # optional, auto-appended to instructions
+    ├── apim-policies/
+    │   ├── dev/
+    │   │   ├── agents-api.xml      # Foundry agents API policy
+    │   │   └── chat-api.xml        # Chat/completions API policy
+    │   ├── test/
+    │   │   ├── agents-api.xml
+    │   │   └── chat-api.xml
+    │   └── prod/
+    │       ├── agents-api.xml      # stricter limits + IP filtering
+    │       └── chat-api.xml
+    └── scripts/
+        ├── deploy-agent.py         # creates/updates agent versions in Foundry
+        ├── deploy-api.py           # pushes APIM policies + configures diagnostics
+        ├── requirements.txt
 ```
 
 ---
@@ -118,11 +126,71 @@ The app registration needs these RBAC roles on the resource group:
 
 ---
 
+## Adding a new agent
+
+No pipeline changes are needed. The Deploy Agent workflow automatically discovers every folder under `src/agents/` and deploys each one.
+
+### 1. Create the agent folder
+
+```
+src/agents/<your-agent-name>/
+  dev.yaml
+  test.yaml
+  prod.yaml
+  instructions.md      ← shared system prompt (required)
+  guardrails.md        ← optional, auto-appended to instructions if present
+```
+
+Use `azure-ai-portugal-agent` as a reference.
+
+### 2. Create the environment YAML files
+
+Each YAML file configures the agent for one environment:
+
+```yaml
+# src/agents/my-new-agent/dev.yaml
+name: my-new-agent-dev              # agent name registered in Foundry
+display_name: "My New Agent [DEV]"
+description: "What this agent does"
+model: gpt-4o
+instructions_file: instructions.md  # optional — defaults to instructions.md
+```
+
+> The `name` field is what gets registered in Foundry and exposed through APIM. Use the `<agent-name>-<env>` convention to keep environments separate.
+
+### 3. Write the system prompt
+
+Add your agent's instructions to `instructions.md`. You can use per-environment overrides by naming the file `instructions.dev.md`, `instructions.test.md`, or `instructions.prod.md` and referencing it in the YAML.
+
+### 4. Push and deploy
+
+```bash
+git add src/agents/my-new-agent/
+git commit -m "feat: add my-new-agent"
+git push origin dev          # triggers Deploy Agent → dev
+```
+
+Or trigger a single agent manually via **Actions → Deploy Agent → Run workflow**, specifying the agent folder name in the "Agent to deploy" input.
+
+### 5. Required Azure RBAC for new environments
+
+The GitHub Actions service principal needs **Azure AI User** on the Foundry account for each environment it deploys to:
+
+```bash
+az role assignment create \
+  --assignee-object-id <github-sp-object-id> \
+  --assignee-principal-type ServicePrincipal \
+  --role "Azure AI User" \
+  --scope "/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<foundry-account>"
+```
+
+---
+
 ## Making changes
 
 ### Update agent behaviour
 
-Edit `src/agents/azure-ai-portugal-agent/<env>.yaml` or `instructions.md`, then push to the relevant branch. The Deploy Agent workflow runs automatically.
+Edit `src/agents/<agent-name>/<env>.yaml` or the instructions file, then push to the relevant branch. The Deploy Agent workflow runs automatically.
 
 ```yaml
 # src/agents/azure-ai-portugal-agent/prod.yaml
@@ -157,13 +225,13 @@ Push to `main` → policy is live in ~30 seconds, with a full Git audit trail.
 
 ```bash
 # Install dependencies
-pip install -r src/pipelines/requirements.txt
+pip install -r src/scripts/requirements.txt
 
 # Copy and fill in the example env file
-cp src/pipelines/.env.example src/pipelines/.env
+cp src/scripts/.env.example src/scripts/.env
 
 # Run a dry-run deploy
-python src/pipelines/deploy-agent.py --env dev --agent azure-ai-portugal-agent --dry-run
+python src/scripts/deploy-agent.py --env dev --agent azure-ai-portugal-agent --dry-run
 ```
 
 The `.env` file is gitignored — it is for local use only.
