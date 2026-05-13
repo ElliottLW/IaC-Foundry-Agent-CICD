@@ -1,7 +1,6 @@
 name: "azure-ai-portugal-agent"
 display_name: "Azure & AI Portugal Agent"
 description: "AI assistant for Portuguese-speaking teams navigating Microsoft Azure and AI services, built by L-W Tech."
-instructions_file: "instructions.prod.md"
 guardrails_file: "guardrails.md"
 starter_prompts:
   - "Como posso reduzir os custos no Azure?"
