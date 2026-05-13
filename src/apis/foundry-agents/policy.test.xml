@@ -4,10 +4,12 @@
 
     <!--
       ── IP filtering (test) ───────────────────────────────────────────────────
-      Allow-list only — all traffic not listed below is blocked.
+      Block known bad actors. Add CIDRs below as needed.
     -->
-    <ip-filter action="allow">
-      <!-- Add allowed IPs/CIDRs here e.g. <address>1.2.3.4</address> -->
+    <ip-filter action="forbid">
+      <!-- RFC 5737 documentation ranges — replace with real IPs to block -->
+      <address>192.0.2.1</address>
+      <address-range from="198.51.100.0" to="198.51.100.255" />
     </ip-filter>
 
     <!--
