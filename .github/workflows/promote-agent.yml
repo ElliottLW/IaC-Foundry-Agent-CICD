@@ -1,0 +1,156 @@
+name: Promote Agent
+
+# Deploys an agent through all three environments in sequence.
+# Each stage pauses for approval — configure required reviewers in
+# Settings → Environments for dev, test, and prod.
+#
+# Flow:
+#   deploy-dev (approval gate) → deploy-test (approval gate) → deploy-prod (approval gate)
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: "Agent to promote (leave blank to promote all)"
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+
+  # ── DEV ────────────────────────────────────────────────────────────────────
+
+  deploy-dev:
+    name: "Deploy: dev"
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/scripts/requirements.txt
+
+      - run: pip install -r src/scripts/requirements.txt
+
+      - name: Deploy agent(s) → dev
+        env:
+          FOUNDRY_PROJECT_ENDPOINT: ${{ vars.FOUNDRY_PROJECT_ENDPOINT }}
+          OPENAI_DEPLOYMENT_NAME:   ${{ vars.OPENAI_DEPLOYMENT_NAME }}
+          ENVIRONMENT:              dev
+          AGENT_INPUT:              ${{ inputs.agent }}
+        run: |
+          if [ -n "$AGENT_INPUT" ]; then
+            python src/scripts/deploy-agent.py --env dev --agent "$AGENT_INPUT"
+          else
+            for agent_dir in src/agents/*/; do
+              python src/scripts/deploy-agent.py --env dev --agent "$(basename "$agent_dir")"
+            done
+          fi
+
+  # ── TEST ───────────────────────────────────────────────────────────────────
+
+  deploy-test:
+    name: "Deploy: test"
+    needs: deploy-dev               # blocks if dev deploy failed
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/scripts/requirements.txt
+
+      - run: pip install -r src/scripts/requirements.txt
+
+      - name: Deploy agent(s) → test
+        env:
+          FOUNDRY_PROJECT_ENDPOINT: ${{ vars.FOUNDRY_PROJECT_ENDPOINT }}
+          OPENAI_DEPLOYMENT_NAME:   ${{ vars.OPENAI_DEPLOYMENT_NAME }}
+          ENVIRONMENT:              test
+          AGENT_INPUT:              ${{ inputs.agent }}
+        run: |
+          if [ -n "$AGENT_INPUT" ]; then
+            python src/scripts/deploy-agent.py --env test --agent "$AGENT_INPUT"
+          else
+            for agent_dir in src/agents/*/; do
+              python src/scripts/deploy-agent.py --env test --agent "$(basename "$agent_dir")"
+            done
+          fi
+
+  # ── PROD ───────────────────────────────────────────────────────────────────
+
+  deploy-prod:
+    name: "Deploy: prod"
+    needs: deploy-test              # blocks if test deploy failed
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/scripts/requirements.txt
+
+      - run: pip install -r src/scripts/requirements.txt
+
+      - name: Deploy agent(s) → prod
+        env:
+          FOUNDRY_PROJECT_ENDPOINT: ${{ vars.FOUNDRY_PROJECT_ENDPOINT }}
+          OPENAI_DEPLOYMENT_NAME:   ${{ vars.OPENAI_DEPLOYMENT_NAME }}
+          ENVIRONMENT:              prod
+          AGENT_INPUT:              ${{ inputs.agent }}
+        run: |
+          if [ -n "$AGENT_INPUT" ]; then
+            python src/scripts/deploy-agent.py --env prod --agent "$AGENT_INPUT"
+          else
+            for agent_dir in src/agents/*/; do
+              python src/scripts/deploy-agent.py --env prod --agent "$(basename "$agent_dir")"
+            done
+          fi
+
+      - name: Summary
+        env:
+          AGENT_INPUT: ${{ inputs.agent }}
+        run: |
+          echo "### Promotion Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Agent | \`${AGENT_INPUT:-all}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Promoted through | \`dev → test → prod\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Triggered by | \`${{ github.actor }}\` |" >> "$GITHUB_STEP_SUMMARY"

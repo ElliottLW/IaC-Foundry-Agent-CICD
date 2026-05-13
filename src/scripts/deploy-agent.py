@@ -57,8 +57,23 @@ def load_config(agent_dir: Path, env: str) -> dict:
     return config
 
 
-def load_instructions(agent_dir: Path, config: dict) -> str:
-    instructions_file = agent_dir / config.get("instructions_file", "instructions.md")
+def load_instructions(agent_dir: Path, config: dict, env: str) -> str:
+    # Resolution order:
+    #   1. Explicit 'instructions_file' key in the env YAML  (highest priority)
+    #   2. Auto-discovered instructions.{env}.md              (env-specific override)
+    #   3. instructions.md                                    (shared base, lowest priority)
+    if "instructions_file" in config:
+        instructions_file = agent_dir / config["instructions_file"]
+        log.info("Using explicit instructions file '%s'.", instructions_file)
+    else:
+        env_specific = agent_dir / f"instructions.{env}.md"
+        if env_specific.is_file():
+            instructions_file = env_specific
+            log.info("Using env-specific instructions file '%s'.", instructions_file)
+        else:
+            instructions_file = agent_dir / "instructions.md"
+            log.info("Using shared base instructions file '%s'.", instructions_file)
+
     if not instructions_file.is_file():
         log.error("Instructions file not found: %s", instructions_file)
         sys.exit(1)
@@ -144,7 +159,7 @@ def main():
     name          = config["name"]
     display_name  = config.get("display_name", name)
     description   = config.get("description", display_name)
-    instructions  = load_instructions(agent_dir, config)
+    instructions  = load_instructions(agent_dir, config, args.env)
     model         = config.get("model") or require_env("OPENAI_DEPLOYMENT_NAME")
     endpoint      = require_env("FOUNDRY_PROJECT_ENDPOINT")
     starter_prompts = config.get("starter_prompts", [])
