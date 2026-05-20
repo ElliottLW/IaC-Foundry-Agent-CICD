@@ -182,6 +182,13 @@ def main():
     if starter_prompts:
         metadata["starterPrompts"] = "\n".join(starter_prompts[:3])
 
+    # Try to get the agent first; if it doesn't exist, create a new version (which creates the agent)
+    try:
+        existing_agent = client.agents.get(agent_name=name)
+        log.info("Agent '%s' exists; creating new version...", name)
+    except Exception:
+        log.info("Agent '%s' not found; will create it with first version...", name)
+    
     agent  = client.agents.create_version(
         agent_name=name,
         definition=PromptAgentDefinition(model=model, instructions=instructions),

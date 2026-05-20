@@ -12,12 +12,12 @@ product_id: ai-platform
 
 # Per-environment backend service URLs
 backends:
-  dev:  "https://lw-ai-openai-dev.openai.azure.com/openai"
+  dev:  "https://cog-lwai-dev-uks-001.openai.azure.com/openai"
   test: "https://lw-ai-openai-test.openai.azure.com/openai"
   prod: "https://lw-ai-openai-prod.openai.azure.com/openai"
 
 # Per-environment APIM logger names for Application Insights diagnostics.
 loggers:
-  dev:  apim-logger-dev
+  dev:  apim-log-lwai-dev-uks-001
   test: apim-logger-test
   prod: apim-logger-prod
