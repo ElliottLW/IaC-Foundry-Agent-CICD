@@ -8,7 +8,7 @@ info:
     traces to Application Insights.
   version: "v1"
 servers:
-  - url: "https://apim-lw-ai-dev.azure-api.net/agents"
+  - url: "https://apim-lwtech-ai-dev.azure-api.net/agents"
     description: "Dev APIM gateway (service URL overridden per environment at deploy time)"
 
 paths:

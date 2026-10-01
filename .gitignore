@@ -11,6 +11,7 @@ crash.log
 .env
 .env.local
 *.env
+postman/*.local.postman_environment.json
 
 # IDE
 .vscode/

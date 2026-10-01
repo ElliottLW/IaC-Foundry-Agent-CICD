@@ -1,0 +1,92 @@
+{
+  "info": {
+    "name": "L-W Foundry Agent Gateway",
+    "description": "Calls the dev APIM front door for spaghetti-junction-dev. Import dev.local.postman_environment.json alongside this collection. The subscription key stays out of git.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Invoke spaghetti-junction-dev",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const demoHeaders = ['X-Environment', 'X-Powered-By', 'X-Demo-IP-Policy', 'X-RateLimit-Policy', 'X-Request-Id'];",
+              "demoHeaders.forEach((name) => {",
+              "    const value = pm.response.headers.get(name);",
+              "    if (value) console.log(name + ': ' + value);",
+              "});",
+              "",
+              "pm.test('Gateway accepted the subscription key', function () {",
+              "    pm.expect(pm.response.code).to.not.eql(401);",
+              "});",
+              "",
+              "function show(text) {",
+              "    pm.visualizer.set('<pre style=\"font: 18px Segoe UI, sans-serif; white-space: pre-wrap; padding: 24px;\">{{text}}</pre>', { text: text });",
+              "}",
+              "",
+              "if (pm.response.code === 403) {",
+              "    const body = pm.response.json();",
+              "    pm.test('Blocked by the demo IP allow-list', function () {",
+              "        pm.expect(body.error.code).to.eql('ip_not_allowed');",
+              "    });",
+              "    show(body.error.message + '\\n\\nYour IP: ' + body.error.your_ip);",
+              "} else {",
+              "    pm.test('Agent returned 200', function () {",
+              "        pm.response.to.have.status(200);",
+              "    });",
+              "    const body = pm.response.json();",
+              "    const text = body.output?.[0]?.content?.[0]?.text || '';",
+              "    show(text || JSON.stringify(body, null, 2));",
+              "    pm.test('Response has an id', function () {",
+              "        pm.expect(body.id).to.be.a('string').and.not.empty;",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Ocp-Apim-Subscription-Key",
+            "value": "{{subscriptionKey}}",
+            "description": "APIM product subscription key. Not a Foundry token. APIM adds the managed-identity token."
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"input\": \"{{prompt}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/agents/{{agentName}}/endpoint/protocols/openai/responses",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "agents",
+            "{{agentName}}",
+            "endpoint",
+            "protocols",
+            "openai",
+            "responses"
+          ]
+        },
+        "description": "POST the prompt. Do not send Authorization or api-version. The dev policy injects both."
+      },
+      "response": []
+    }
+  ]
+}
