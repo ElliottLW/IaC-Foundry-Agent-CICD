@@ -125,17 +125,17 @@ Add these variables to **each environment** (Settings → Environments → selec
 
 #### For the Agent workflow
 
-| Variable | Example | Description |
+| Variable | Example (dev) | Description |
 |----------|---------|-------------|
-| `FOUNDRY_PROJECT_ENDPOINT` | `https://myaccount.services.ai.azure.com/api/projects/myproject` | AI Foundry project endpoint |
-| `OPENAI_DEPLOYMENT_NAME` | `gpt-4o` | Name of the GPT deployment to use |
+| `FOUNDRY_PROJECT_ENDPOINT` | `https://lw-ai-foundry-dev.services.ai.azure.com/api/projects/aip-lw-ai-dev` | AI Foundry project endpoint. No trailing slash. |
+| `OPENAI_DEPLOYMENT_NAME` | `gpt-4o` | Deployment name on the connected Azure OpenAI account, not the Foundry account name |
 
 #### For the APIM Policy workflow
 
-| Variable | Example | Description |
+| Variable | Example (dev) | Description |
 |----------|---------|-------------|
 | `APIM_NAME` | `apim-lw-ai-dev` | API Management instance name |
-| `RESOURCE_GROUP_NAME` | `rg-lw-ai-dev` | Resource group containing the APIM instance |
+| `RESOURCE_GROUP_NAME` | `rg-lw-ai-platform-dev` | Resource group containing the APIM instance |
 
 ### 4. Configure Azure OIDC
 
