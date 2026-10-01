@@ -1,10 +1,15 @@
 name: Deploy Agent
 
-# Deploys one or all agents to a chosen environment.
-# Trigger manually via Actions → Deploy Agent → Run workflow.
-# For a full dev → test → prod promotion, use the Promote Agent workflow instead.
+# Deploys one or all agents.
+# A push to dev, test, or main deploys that environment, same as the API workflow.
+# Manual runs remain available via Actions → Deploy Agent → Run workflow.
+# For a gated dev → test → prod promotion, use the Promote Agent workflow instead.
 
 on:
+  push:
+    branches: [main, test, dev]
+    paths:
+      - "src/agents/**"
   workflow_dispatch:
     inputs:
       environment:
@@ -26,12 +31,39 @@ env:
   PYTHON_VERSION: "3.12"
 
 jobs:
+  # ── Resolve environment from branch or manual input ───────────────────────
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.resolve.outputs.environment }}
+      agent:       ${{ steps.resolve.outputs.agent }}
+    steps:
+      - name: Resolve target environment and agent
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+            AGENT="${{ github.event.inputs.agent }}"
+          else
+            case "${{ github.ref_name }}" in
+              main) ENV="prod" ;;
+              test) ENV="test" ;;
+              dev)  ENV="dev"  ;;
+              *)    echo "Unknown branch — cannot resolve environment"; exit 1 ;;
+            esac
+            AGENT=""
+          fi
+          echo "environment=$ENV" >> "$GITHUB_OUTPUT"
+          echo "agent=$AGENT"     >> "$GITHUB_OUTPUT"
+          echo "Deploying agent to: $ENV (agent=${AGENT:-all})"
+
   # ── Deploy the agent inside the correct GitHub Environment ────────────────
   # FOUNDRY_PROJECT_ENDPOINT and OPENAI_DEPLOYMENT_NAME must be set as
   # GitHub Environment variables for each environment (dev / test / prod).
   deploy:
+    needs: setup
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ needs.setup.outputs.environment }}
 
     steps:
       - name: Checkout
@@ -59,30 +91,33 @@ jobs:
         env:
           FOUNDRY_PROJECT_ENDPOINT: ${{ vars.FOUNDRY_PROJECT_ENDPOINT }}
           OPENAI_DEPLOYMENT_NAME:   ${{ vars.OPENAI_DEPLOYMENT_NAME }}
-          AGENT_INPUT:              ${{ inputs.agent }}
+          AGENT_INPUT:              ${{ needs.setup.outputs.agent }}
+          TARGET_ENV:               ${{ needs.setup.outputs.environment }}
         run: |
           if [ -n "$AGENT_INPUT" ]; then
             echo "Deploying single agent: $AGENT_INPUT"
-            python src/scripts/deploy-agent.py --env "${{ inputs.environment }}" --agent "$AGENT_INPUT"
+            python src/scripts/deploy-agent.py --env "$TARGET_ENV" --agent "$AGENT_INPUT"
           else
             echo "Deploying all agents in src/agents/"
             for agent_dir in src/agents/*/; do
               agent=$(basename "$agent_dir")
               echo "→ Deploying $agent"
-              python src/scripts/deploy-agent.py --env "${{ inputs.environment }}" --agent "$agent"
+              python src/scripts/deploy-agent.py --env "$TARGET_ENV" --agent "$agent"
             done
           fi
 
       - name: Summary
         env:
-          INVOKE_URL: ${{ steps.deploy.outputs.invoke_url }}
+          INVOKE_URL:  ${{ steps.deploy.outputs.invoke_url }}
+          AGENT_INPUT: ${{ needs.setup.outputs.agent }}
+          TARGET_ENV:  ${{ needs.setup.outputs.environment }}
         run: |
           echo "### Agent Deployment" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Agent | \`${AGENT_INPUT:-all}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Environment | \`${{ inputs.environment }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Environment | \`$TARGET_ENV\` |" >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$INVOKE_URL" ]; then
             echo "| Invoke URL | \`$INVOKE_URL\` |" >> "$GITHUB_STEP_SUMMARY"
           fi
