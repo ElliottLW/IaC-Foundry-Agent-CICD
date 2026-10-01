@@ -36,7 +36,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 _AGENTS_ROOT   = Path(__file__).parent.parent.parent / "src" / "agents"
-_DEFAULT_AGENT = "azure-ai-portugal-agent"
+_DEFAULT_AGENT = "spaghetti-junction"
 
 
 def require_env(name: str) -> str:

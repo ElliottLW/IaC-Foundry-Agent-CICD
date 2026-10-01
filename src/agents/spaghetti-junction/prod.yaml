@@ -1,0 +1,9 @@
+name: "spaghetti-junction"
+display_name: "Spaghetti Junction"
+description: "Midlands cloud copilot for the Midland Microsoft Meetup in Birmingham. Untangles Azure and AI before the design looks like the M6. Built by L-W Tech."
+instructions_file: instructions.md
+guardrails_file: "guardrails.md"
+starter_prompts:
+  - "I've got a Foundry agent. Should APIM sit in front of it?"
+  - "What belongs in the agent instructions, and what belongs in the APIM policy?"
+  - "Sketch a simple dev, test, and prod path for this agent"

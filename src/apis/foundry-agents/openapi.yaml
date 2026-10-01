@@ -28,8 +28,8 @@ paths:
           required: true
           schema:
             type: string
-          description: Foundry agent name (e.g. azure-ai-portugal-agent-dev)
-          example: azure-ai-portugal-agent-dev
+          description: Foundry agent name (e.g. spaghetti-junction-dev)
+          example: spaghetti-junction-dev
       requestBody:
         required: true
         content:
@@ -42,14 +42,14 @@ paths:
                 input:
                   type: string
                   description: User message / prompt to send to the agent
-                  example: "What is the capital of Portugal?"
+                  example: "What belongs in the agent instructions, and what belongs in the APIM policy?"
                 previous_response_id:
                   type: string
                   description: |
                     ID of a previous response — enables multi-turn conversation
                     without managing thread state client-side.
             example:
-              input: "What is the capital of Portugal?"
+              input: "What belongs in the agent instructions, and what belongs in the APIM policy?"
       responses:
         "200":
           description: Completed agent response (Foundry Responses object)
@@ -70,7 +70,7 @@ paths:
                     properties:
                       name:
                         type: string
-                        example: azure-ai-portugal-agent-dev
+                        example: spaghetti-junction-dev
                       version:
                         type: string
                         example: "12"

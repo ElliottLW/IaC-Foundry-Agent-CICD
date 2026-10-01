@@ -1,8 +1,28 @@
 # AI Foundry Agent & APIM Policy CI/CD
 
+Demo for the **Midland Microsoft Meetup**, Birmingham.
+
 GitOps pipeline for managing Azure AI Foundry agents and API Management policies as code — no infrastructure knowledge required.
 
+The sample agent is **Spaghetti Junction** — a Midlands cloud copilot that untangles Azure and AI before the design looks like the M6. Dev, test, and prod each ship a different prompt, so the same question on stage comes back with a different shape. That difference is the point.
+
+Foundry names: `spaghetti-junction-dev`, `spaghetti-junction-test`, `spaghetti-junction`. A deploy registers these as new agents. It will not rename an older agent still sitting in the project.
+
 Changes to agent configuration or API policies are deployed automatically when you push to the corresponding branch.
+
+### On stage
+
+Ask all three environments the same thing:
+
+> I've got a Foundry agent. Should APIM sit in front of it?
+
+| Environment | What the room should see |
+|-------------|--------------------------|
+| **dev** | A `DEV` banner, the recommendation, and the option it rejected |
+| **test** | A `TEST` banner, then a **Promote?** checklist a reviewer would actually use |
+| **prod** | The decision first. No banner. Shorter. |
+
+Every answer ends with a *Junction note* — the closer is in the prompt, so a one-line edit is a visible deploy.
 
 ---
 
@@ -154,7 +174,7 @@ src/agents/<your-agent-name>/
   guardrails.md        ← optional, auto-appended to instructions if present
 ```
 
-Use `azure-ai-portugal-agent` as a reference.
+Use `spaghetti-junction` as a reference.
 
 ### 2. Create the environment YAML files
 
@@ -206,11 +226,11 @@ az role assignment create \
 Edit `src/agents/<agent-name>/<env>.yaml` or the instructions file, then push to the relevant branch. The Deploy Agent workflow runs automatically.
 
 ```yaml
-# src/agents/azure-ai-portugal-agent/prod.yaml
-name: "AI Portugal Expert"
-description: "Expert assistant for Portugal travel and culture"
+# src/agents/spaghetti-junction/prod.yaml
+name: "spaghetti-junction"
+display_name: "Spaghetti Junction"
+description: "Midlands cloud copilot for the Midland Microsoft Meetup in Birmingham."
 instructions_file: instructions.md
-model: gpt-4o
 ```
 
 ### Update API policies
@@ -244,7 +264,7 @@ pip install -r src/scripts/requirements.txt
 cp src/scripts/.env.example src/scripts/.env
 
 # Run a dry-run deploy
-python src/scripts/deploy-agent.py --env dev --agent azure-ai-portugal-agent --dry-run
+python src/scripts/deploy-agent.py --env dev --agent spaghetti-junction --dry-run
 ```
 
 The `.env` file is gitignored — it is for local use only.
