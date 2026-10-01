@@ -65,7 +65,7 @@
   <on-error>
     <base />
     <choose>
-      <when condition="@(context.LastError != null && (context.LastError.Source == "ip-filter" || context.Response.StatusCode == 403))">
+      <when condition="@(context.Response.StatusCode == 403)">
         <return-response>
           <set-status code="403" reason="Forbidden" />
           <set-header name="Content-Type" exists-action="override">
