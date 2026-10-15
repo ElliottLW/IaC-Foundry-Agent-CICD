@@ -1,5 +1,5 @@
 name: "azure-architecture-advisor-dev"
-display_name: "Azure Architecture Advisor [DEV]"
+display_name: "Azure Architecture Advisor [DEV] NEW V3"
 description: "Experimental advisor for Azure architectural design decisions. Shows the recommendation and the option it rejected. Built by L-W Tech."
 instructions_file: instructions.dev.md
 guardrails_file: "guardrails.md"
