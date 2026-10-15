@@ -1,12 +1,12 @@
 {
   "info": {
     "name": "L-W Foundry Agent Gateway",
-    "description": "Calls the dev APIM front door for spaghetti-junction-dev. Import dev.local.postman_environment.json alongside this collection. The subscription key stays out of git.",
+    "description": "Calls the dev APIM front door for azure-architecture-advisor-dev. Import dev.local.postman_environment.json alongside this collection. The subscription key stays out of git.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Invoke spaghetti-junction-dev",
+      "name": "Invoke azure-architecture-advisor-dev",
       "event": [
         {
           "listen": "test",

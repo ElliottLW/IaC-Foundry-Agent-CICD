@@ -1,28 +1,26 @@
 # AI Foundry Agent & APIM Policy CI/CD
 
-Demo for the **Midland Microsoft Meetup**, Birmingham.
+GitOps pipeline for an Azure architecture agent and the API Management policies in front of it.
 
-GitOps pipeline for managing Azure AI Foundry agents and API Management policies as code — no infrastructure knowledge required.
+The sample agent is **Azure Architecture Advisor**. It recommends the smallest Azure design that meets a requirement, names the option it rejected, and states the trade-off. Dev, test, and prod each ship a different prompt, so the same question comes back with a different shape.
 
-The sample agent is **Spaghetti Junction** — a Midlands cloud copilot that untangles Azure and AI before the design looks like the M6. Dev, test, and prod each ship a different prompt, so the same question on stage comes back with a different shape. That difference is the point.
-
-Foundry names: `spaghetti-junction-dev`, `spaghetti-junction-test`, `spaghetti-junction`. A deploy registers these as new agents. It will not rename an older agent still sitting in the project.
+Foundry resource names are `azure-architecture-advisor-dev`, `azure-architecture-advisor-test`, and `azure-architecture-advisor`. A deploy registers those names. It does not rename an older agent already in the project.
 
 A push does not deploy by itself. The workflow has to start, then a reviewer approves the GitHub environment. On `main`, only the API workflow starts from a push, and that push targets prod. This subscription only has dev, so the stage path is a pull request into `dev`, then **Review deployments → Approve**.
 
-### On stage
+### Try it
 
 Ask all three environments the same thing:
 
-> I've got a Foundry agent. Should APIM sit in front of it?
+> We need a private front door for a Foundry agent. What is the smallest Azure design?
 
-| Environment | What the room should see |
-|-------------|--------------------------|
+| Environment | What you should see |
+|-------------|---------------------|
 | **dev** | A `DEV` banner, the recommendation, and the option it rejected |
 | **test** | A `TEST` banner, then a **Promote?** checklist a reviewer would actually use |
 | **prod** | The decision first. No banner. Shorter. |
 
-Every answer ends with a *Junction note* — the closer is in the prompt, so a one-line edit is a visible deploy.
+Every answer ends with a *Design note* — the closer is in the prompt, so a one-line edit is a visible deploy.
 
 ---
 
@@ -67,7 +65,7 @@ Approval gates are configured via **Settings → Environments** — each environ
 │       └── promote-agent.yml       # manual promotion: dev → test → prod with approval gates
 └── src/
     ├── agents/
-    │   └── spaghetti-junction/
+    │   └── azure-architecture-advisor/
     │       ├── dev.yaml            # name, instructions file, starter prompts
     │       ├── test.yaml
     │       ├── prod.yaml           # uses instructions.md, not a prod-only file
@@ -171,7 +169,7 @@ src/agents/<your-agent-name>/
   guardrails.md        ← optional, auto-appended to instructions if present
 ```
 
-Use `spaghetti-junction` as a reference.
+Use `azure-architecture-advisor` as a reference.
 
 ### 2. Create the environment YAML files
 
@@ -228,24 +226,19 @@ az role assignment create \
 
 ### Update agent behaviour
 
-Edit `src/agents/<agent-name>/<env>.yaml` or the instructions file, then push to the relevant branch. The Deploy Agent workflow runs automatically.
+Edit `src/agents/<agent-name>/<env>.yaml` or the instructions file. On `main`, run **Actions → Deploy Agent** and choose the environment. A push to `dev` that changes `src/agents/**` starts that workflow itself, then waits for the dev environment approval.
 
 ```yaml
-# src/agents/spaghetti-junction/prod.yaml
-name: "spaghetti-junction"
-display_name: "Spaghetti Junction". On `main`, run **Actions → Deploy Agent** and choose the environment. A push to `dev` that changes `src/agents/**` starts that workflow itself, then waits for the dev environment approval
-description: "Midlands cloud copilot for the Midland Microsoft Meetup in Birmingham."
+# src/agents/azure-architecture-advisor/prod.yaml
+name: "azure-architecture-advisor"
+display_name: "Azure Architecture Advisor"
+description: "Advises on Azure architectural design decisions."
 instructions_file: instructions.md
 ```
 
 ### Update API policies
 
-Edit the XML files in `src/apim-policies/<env>/`, then push. The Deploy APIM Policies workflow runs automatically.
-
-**To block an IP in prod:**
-```xml
-<!-- src/apim-policies/prod/chat-api.xml -->
-<ip-f`src/apis/<api>/policy.<env>.xml`, then merge to the branch for that environment. The workflow applies that file only. Merging the dev policy to `main` does not change dev.
+Edit `src/apis/<api>/policy.<env>.xml`, then merge to the branch for that environment. The workflow applies that file only. Merging the dev policy to `main` does not change dev.
 
 **To allow one IP and refuse everyone else:**
 ```xml
@@ -257,15 +250,17 @@ Edit the XML files in `src/apim-policies/<env>/`, then push. The Deploy APIM Pol
 
 `action="allow"` is the allow-list. `action="forbid"` only blocks the addresses you name.
 
-The deploy still waits for the environment approval. It is not live on push
-```bash
-# Install dependencies
-pip install -r src/scripts/requirements.txt
+The deploy still waits for the environment approval. It is not live on push.
 
+---
+
+## Local development
+
+```bash
 pip install -r src/scripts/requirements.txt
 
 # FOUNDRY_PROJECT_ENDPOINT and OPENAI_DEPLOYMENT_NAME, or a gitignored .env
-python src/scripts/deploy-agent.py --env dev --agent spaghetti-junction --dry-run
+python src/scripts/deploy-agent.py --env dev --agent azure-architecture-advisor --dry-run
 ```
 
 There is no `.env.example` in the repo. Use `py -3` on Windows if `python` is the Store alias.
@@ -274,4 +269,4 @@ There is no `.env.example` in the repo. Use `py -3` on Windows if `python` is th
 
 Import [postman/foundry-agents.postman_collection.json](postman/foundry-agents.postman_collection.json) and [postman/dev.postman_environment.json](postman/dev.postman_environment.json). Put the `ai-platform` subscription key in `subscriptionKey`. Do not commit it. `postman/dev.local.postman_environment.json` is gitignored for that reason.
 
-Send **Invoke spaghetti-junction-dev**. In the response body, filter with `$.output[0].content[0].text`. The Visualize tab shows the same text. The header to point at is `Ocp-Apim-Subscription-Key`. APIM adds the Foundry token. Do not send `Authorization`
+Send **Invoke azure-architecture-advisor-dev**. In the response body, filter with `$.output[0].content[0].text`. The Visualize tab shows the same text. The header to point at is `Ocp-Apim-Subscription-Key`. APIM adds the Foundry token. Do not send `Authorization`

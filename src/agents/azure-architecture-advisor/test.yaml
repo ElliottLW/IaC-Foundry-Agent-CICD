@@ -1,0 +1,9 @@
+name: "azure-architecture-advisor-test"
+display_name: "Azure Architecture Advisor [TEST]"
+description: "Validation cut of an advisor for Azure architectural design decisions. Recommends a design, then lists what a reviewer should check. Built by L-W Tech."
+instructions_file: instructions.test.md
+guardrails_file: "guardrails.md"
+starter_prompts:
+  - "We need a private front door for a Foundry agent. What is the smallest Azure design?"
+  - "What should a reviewer check before this design is promoted?"
+  - "What belongs in the agent instructions, and what belongs in the APIM policy?"

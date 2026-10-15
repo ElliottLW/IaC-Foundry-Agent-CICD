@@ -1,0 +1,9 @@
+name: "azure-architecture-advisor"
+display_name: "Azure Architecture Advisor"
+description: "Advises on Azure architectural design decisions: the smallest set of services that works, and the trade-off being accepted. Built by L-W Tech."
+instructions_file: instructions.md
+guardrails_file: "guardrails.md"
+starter_prompts:
+  - "We need a private front door for a Foundry agent. What is the smallest Azure design?"
+  - "When should this be App Service, Container Apps, or Functions?"
+  - "What belongs in the agent instructions, and what belongs in the APIM policy?"
