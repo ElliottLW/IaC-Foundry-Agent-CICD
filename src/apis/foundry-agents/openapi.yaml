@@ -28,8 +28,8 @@ paths:
           required: true
           schema:
             type: string
-          description: Foundry agent name (e.g. spaghetti-junction-dev)
-          example: spaghetti-junction-dev
+          description: Foundry agent name (e.g. azure-architecture-advisor-dev)
+          example: azure-architecture-advisor-dev
       requestBody:
         required: true
         content:
@@ -70,7 +70,7 @@ paths:
                     properties:
                       name:
                         type: string
-                        example: spaghetti-junction-dev
+                        example: azure-architecture-advisor-dev
                       version:
                         type: string
                         example: "12"
